@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Krigets Arv — The Legacy of War
 
-## Getting Started
+En investigativ webbapplikation om väpnade konflikters konsekvenser för barn globalt. Kombinerar datavisualisering, AI-forskning och rollspelsperspektiv för att synliggöra sambanden mellan geopolitik, vapenhandel och barns lidande.
 
-First, run the development server:
+## Funktioner
+
+- **Explore** — Interaktiv Mapbox-karta med 6 aktiva konfliktzoner (Yemen, Gaza, Ukraina, Sudan, Sydsudan, Syrien)
+- **Investigate** — Claude AI-chatbot med 366 verifierade källdokument, kompakt och utförligt läge
+- **Perspectives** — Rollspel med tre perspektiv: barn i Gaza, FN-diplomat, vapenlobbyist
+- **Factbank** — 15 verifierade statistikkort med källattribution, filtrerbart per kategori
+
+## Tech stack
+
+Next.js 15 · React 19 · TypeScript · Tailwind CSS · shadcn/ui · Mapbox GL · Anthropic Claude API · next-intl (sv/en)
+
+## Kom igång
 
 ```bash
+npm install
+cp .env.example .env.local  # Fyll i ANTHROPIC_API_KEY och NEXT_PUBLIC_MAPBOX_TOKEN
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Öppna [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Miljövariabler
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+ANTHROPIC_API_KEY=          # Claude API-nyckel (krävs)
+NEXT_PUBLIC_MAPBOX_TOKEN=   # Mapbox token — begränsa till domän i Mapbox-dashboard
+FIRECRAWL_API_KEY=          # Firecrawl (för framtida källdataingestion)
+```
 
-## Learn More
+## Källmaterial
 
-To learn more about Next.js, take a look at the following resources:
+Applikationen refererar till 366 källdokument från UNICEF, SIPRI (Stockholm International Peace Research Institute), ICRC (Internationella Rödakorskommittén), Save the Children, FN:s säkerhetsråd och Human Rights Watch.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Licens
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Privat projekt.
