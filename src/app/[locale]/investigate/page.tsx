@@ -1,28 +1,35 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { MessageResponse } from "@/components/ai-elements/message";
 
-interface Message { role: "user" | "assistant"; content: string; }
 type Mode = "compact" | "detailed";
 
 export default function InvestigatePage() {
   const searchParams = useSearchParams();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>("detailed");
   const bottomRef = useRef<HTMLDivElement>(null);
   const didAutoSubmit = useRef(false);
+
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/investigate",
+      body: { mode },
+    }),
+  });
+
+  const loading = status === "streaming" || status === "submitted";
 
   // Auto-submit query from URL param (from "Utred vidare" on map)
   useEffect(() => {
     const q = searchParams.get("q");
     if (q && !didAutoSubmit.current) {
       didAutoSubmit.current = true;
-      handleSubmit(q);
+      sendMessage({ text: q });
     }
   }, [searchParams]);
 
@@ -36,29 +43,6 @@ export default function InvestigatePage() {
     "Vilka länder exporterar mest vapen till konfliktområden?",
     "Hur används barn som soldater av ISIS och Boko Haram?",
   ];
-
-  async function handleSubmit(question?: string) {
-    const q = question || input.trim();
-    if (!q || loading) return;
-    setInput("");
-    const userMsg: Message = { role: "user", content: q };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/investigate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, mode, history: messages.map((m) => ({ role: m.role, content: m.content })) }),
-      });
-      const data = await res.json();
-      setMessages([...newMessages, { role: "assistant", content: data.answer || data.error }]);
-    } catch {
-      setMessages([...newMessages, { role: "assistant", content: "Något gick fel. Försök igen." }]);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <div className="min-h-screen bg-[#080808] flex flex-col">
@@ -95,7 +79,7 @@ export default function InvestigatePage() {
             <div className="space-y-2">
               <p className="text-[11px] font-mono tracking-widest text-zinc-600 uppercase">Föreslagna frågor</p>
               {suggestedQuestions.map((q) => (
-                <button key={q} onClick={() => handleSubmit(q)}
+                <button key={q} onClick={() => sendMessage({ text: q })}
                   className="block w-full text-left px-4 py-3 border border-zinc-800 hover:border-zinc-600 bg-zinc-900/30 hover:bg-zinc-900/60 text-zinc-300 hover:text-white text-sm transition-all">
                   {q}
                 </button>
@@ -104,8 +88,8 @@ export default function InvestigatePage() {
           </div>
         )}
         <div className="space-y-6">
-          {messages.map((msg, i) => (
-            <div key={i} className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}>
+          {messages.map((msg) => (
+            <div key={msg.id} className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}>
               {msg.role === "assistant" && (
                 <div className="mr-3 mt-1 h-5 w-5 shrink-0 rounded-sm bg-red-900 flex items-center justify-center">
                   <span className="text-[9px] font-bold text-red-200">AI</span>
@@ -113,14 +97,16 @@ export default function InvestigatePage() {
               )}
               <div className={`max-w-[85%] rounded-sm px-4 py-3 text-sm leading-relaxed ${msg.role === "user" ? "bg-zinc-800 text-zinc-100" : "bg-zinc-900/60 border border-zinc-800 text-zinc-200"}`}>
                 {msg.role === "assistant" ? (
-                  <ReactMarkdown components={{
-                    strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>,
-                    p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-                    ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-3">{children}</ul>,
-                    li: ({ children }) => <li className="text-zinc-300">{children}</li>,
-                    h2: ({ children }) => <h2 className="text-sm font-bold text-red-400 mb-2 mt-3 first:mt-0">{children}</h2>,
-                  }}>{msg.content}</ReactMarkdown>
-                ) : msg.content}
+                  msg.parts.map((part, i) =>
+                    part.type === "text" ? (
+                      <MessageResponse key={i}>{part.text}</MessageResponse>
+                    ) : null
+                  )
+                ) : (
+                  msg.parts.map((part, i) =>
+                    part.type === "text" ? <span key={i}>{part.text}</span> : null
+                  )
+                )}
               </div>
             </div>
           ))}
@@ -143,18 +129,28 @@ export default function InvestigatePage() {
       </div>
 
       <div className="border-t border-zinc-800/80 px-8 md:px-14 py-5 bg-black/40 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        <form
+          className="max-w-3xl mx-auto flex gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const input = e.currentTarget.elements.namedItem("q") as HTMLInputElement;
+            if (!input.value.trim()) return;
+            sendMessage({ text: input.value.trim() });
+            input.value = "";
+          }}
+        >
+          <input
+            name="q"
+            type="text"
             placeholder="Skriv din fråga om krigets konsekvenser för barn..."
             disabled={loading}
             className="flex-1 bg-zinc-900/60 border border-zinc-700 hover:border-zinc-600 focus:border-red-700 outline-none text-zinc-100 placeholder:text-zinc-600 px-4 py-3 text-sm transition-colors"
           />
-          <button onClick={() => handleSubmit()} disabled={loading || !input.trim()}
+          <button type="submit" disabled={loading}
             className="bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold tracking-widest uppercase px-6 py-3 transition-colors">
             Fråga
           </button>
-        </div>
+        </form>
         <p className="text-center text-[10px] text-zinc-700 font-mono mt-3">
           Svar baseras på kuraterat källmaterial · UNICEF · SIPRI · ICRC · FN · Läge: {mode === "compact" ? "Kompakt" : "Utförlig"}
         </p>

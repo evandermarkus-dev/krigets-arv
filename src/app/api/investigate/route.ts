@@ -1,4 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { streamText, convertToModelMessages } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 import { NextRequest, NextResponse } from "next/server";
 
 // In-memory rate limiter: 10 requests per IP per minute.
@@ -16,7 +17,6 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const BASE_PROMPT = `Du är "AI-utredaren" för projektet "Krigets Arv" – en investigativ rapport om barns lidande i väpnade konflikter.
 
@@ -78,29 +78,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { question, history, mode } = await req.json();
-    if (!question) return NextResponse.json({ error: "Fråga saknas" }, { status: 400 });
+    const { messages, mode } = await req.json();
+    if (!messages?.length) return NextResponse.json({ error: "Meddelanden saknas" }, { status: 400 });
 
     const systemPrompt = BASE_PROMPT + (mode === "compact" ? COMPACT_ADDITION : DETAILED_ADDITION);
+    const modelMessages = await convertToModelMessages(messages);
 
-    const messages: Anthropic.MessageParam[] = [
-      ...(history || []),
-      { role: "user", content: question },
-    ];
-
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: mode === "compact" ? 300 : 1024,
+    const result = streamText({
+      model: anthropic("claude-sonnet-4-5"),
       system: systemPrompt,
-      messages,
+      messages: modelMessages,
+      maxOutputTokens: mode === "compact" ? 300 : 1024,
     });
 
-    const answer = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as Anthropic.TextBlock).text)
-      .join("");
-
-    return NextResponse.json({ answer });
+    return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Investigate API error:", error);
     return NextResponse.json({ error: "Något gick fel. Försök igen." }, { status: 500 });
