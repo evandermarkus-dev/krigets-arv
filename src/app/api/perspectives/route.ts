@@ -2,28 +2,17 @@ import { streamText, convertToModelMessages } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
-
-// In-memory rate limiter: 10 requests per IP per minute.
-// NOTE: This is per-instance — for distributed rate limiting use @upstash/ratelimit.
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
-    return true;
-  }
-  if (entry.count >= 10) return false;
-  entry.count++;
-  return true;
-}
+import { perspectivesRatelimit } from "@/lib/ratelimit";
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
-  if (!checkRateLimit(ip)) {
-    return NextResponse.json({ error: "För många förfrågningar. Vänta en minut." }, { status: 429 });
+  if (perspectivesRatelimit) {
+    const { success } = await perspectivesRatelimit.limit(ip);
+    if (!success) {
+      return NextResponse.json({ error: "För många förfrågningar. Vänta en minut." }, { status: 429 });
+    }
   }
 
   try {
