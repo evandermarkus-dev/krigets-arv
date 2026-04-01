@@ -1,5 +1,6 @@
 import { streamText, convertToModelMessages } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { createAnthropic } from "@ai-sdk/anthropic";
+const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
 
 // In-memory rate limiter: 10 requests per IP per minute.
