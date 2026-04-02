@@ -1,8 +1,15 @@
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
+const anthropicProvider = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
 import { investigateRatelimit } from "@/lib/ratelimit";
+import { ragMiddleware } from "@/lib/rag-middleware";
+
+// Wrappa modellen med RAG-middleware — injicerar live-sökresultat i varje anrop
+const model = wrapLanguageModel({
+  model: anthropicProvider("claude-sonnet-4-5"),
+  middleware: ragMiddleware,
+});
 
 
 const BASE_PROMPT = `Du är "AI-utredaren" för projektet "Krigets Arv" – en investigativ rapport om barns lidande i väpnade konflikter.
@@ -75,7 +82,7 @@ export async function POST(req: NextRequest) {
     const modelMessages = await convertToModelMessages(messages);
 
     const result = streamText({
-      model: anthropic("claude-sonnet-4-5"),
+      model,
       system: systemPrompt,
       messages: modelMessages,
       maxOutputTokens: mode === "compact" ? 300 : 1024,
