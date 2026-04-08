@@ -32,6 +32,10 @@
     "streamdown": "^2.5.0",
     "tailwind-merge": "^3.5.0"
   },
+  "optionalDependencies": {
+    "@parcel/watcher-linux-x64-glibc": "^2.5.0",
+    "@parcel/watcher-linux-x64-musl": "^2.5.0"
+  },
   "devDependencies": {
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
