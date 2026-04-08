@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "explore": "Utforska",
+    "investigate": "Utred",
+    "perspectives": "Perspektiv",
+    "factbank": "Faktabank"
+  },
+  "home": {
+    "title": "Krigets Arv",
+    "subtitle": "Makt, Profit och Barns Kris",
+    "description": "Utforska sambanden mellan geopolitik, vapenprofiter och barns lidande i väpnade konflikter.",
+    "cta": "Börja utforska"
+  },
+  "explore": {
+    "title": "Utforska konflikter",
+    "description": "Klicka på ett land för att se konflikter, aktörer och konsekvenser för barn."
+  },
+  "investigate": {
+    "title": "AI-utredaren",
+    "placeholder": "Ställ en fråga om krigets konsekvenser för barn...",
+    "submit": "Fråga"
+  },
+  "perspectives": {
+    "title": "Perspektiv",
+    "child": "Ett drabbat barn",
+    "diplomat": "En FN-diplomat",
+    "lobbyist": "En vapenlobbyist"
+  },
+  "factbank": {
+    "title": "Faktabanken",
+    "copy": "Kopiera med källa",
+    "download": "Ladda ner PDF"
+  }
+}

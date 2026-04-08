@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "explore": "Explore",
+    "investigate": "Investigate",
+    "perspectives": "Perspectives",
+    "factbank": "Fact Bank"
+  },
+  "home": {
+    "title": "The Legacy of War",
+    "subtitle": "Power, Profit and the Children's Crisis",
+    "description": "Explore the connections between geopolitics, arms profits and children's suffering in armed conflicts.",
+    "cta": "Start exploring"
+  },
+  "explore": {
+    "title": "Explore conflicts",
+    "description": "Click on a country to see conflicts, actors and consequences for children."
+  },
+  "investigate": {
+    "title": "AI Investigator",
+    "placeholder": "Ask a question about the consequences of war for children...",
+    "submit": "Ask"
+  },
+  "perspectives": {
+    "title": "Perspectives",
+    "child": "An affected child",
+    "diplomat": "A UN diplomat",
+    "lobbyist": "An arms lobbyist"
+  },
+  "factbank": {
+    "title": "Fact Bank",
+    "copy": "Copy with source",
+    "download": "Download PDF"
+  }
+}
