@@ -267,7 +267,7 @@ export default function PerspectivesPage() {
                 Välj ett perspektiv
               </h1>
               <p className="text-zinc-500 text-sm max-w-lg mx-auto leading-relaxed">
-                Tre röster. Samma krig. Varje perspektiv är baserat på dokumenterade fakta – för att skapa förståelse, inte underhållning.
+                Sex röster. Samma krig. Varje perspektiv är baserat på dokumenterade fakta – för att skapa förståelse, inte underhållning.
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
