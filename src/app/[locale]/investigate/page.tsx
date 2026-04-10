@@ -74,6 +74,7 @@ export default function InvestigatePage() {
   });
 
   const loading = status === "streaming" || status === "submitted";
+  const waiting = status === "submitted"; // innan första token kommit
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -149,7 +150,7 @@ export default function InvestigatePage() {
               </div>
             </div>
           ))}
-          {loading && (
+          {waiting && (
             <div className="flex justify-start">
               <div className="mr-3 mt-1 h-5 w-5 shrink-0 rounded-sm bg-red-900 flex items-center justify-center">
                 <span className="text-[9px] font-bold text-red-200">AI</span>

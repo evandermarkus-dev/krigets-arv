@@ -280,6 +280,7 @@ function PerspectiveChat({ role, ui, locale }: { role: Role; ui: typeof UI.sv; l
   });
 
   const loading = status === "streaming" || status === "submitted";
+  const waiting = status === "submitted"; // before first token arrives
 
   useEffect(() => {
     if (!didTriggerMonologue.current) {
@@ -336,7 +337,7 @@ function PerspectiveChat({ role, ui, locale }: { role: Role; ui: typeof UI.sv; l
               </div>
             </div>
           ))}
-          {loading && visibleMessages.length === 0 && (
+          {waiting && (
             <div className="flex justify-start">
               <div className="mr-3 mt-1 h-6 w-6 flex items-center justify-center text-lg">{role.emoji}</div>
               <div className="bg-zinc-900/60 border border-zinc-800 px-4 py-3 rounded-sm">
