@@ -1,112 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import Map, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { getConflicts } from "@/data/conflicts";
+import type { Conflict } from "@/data/conflicts";
 
-const CONFLICTS = [
-  {
-    id: "jemen", name: "Jemen",
-    lng: 48.5164, lat: 15.5527, severity: "critical",
-    description: "Världens värsta humanitära kris. Ett barn dödas eller skadas varje dag i genomsnitt.",
-    stats: [
-      { label: "Barn behöver hjälp", value: "11M" },
-      { label: "Barn dödade/skadade 2025", value: "365+" },
-      { label: "Underernärda barn", value: "2.2M" },
-    ],
-    arms: "USA-vapen via Saudi-Arabien används direkt i bombkampanjen",
-    sources: ["UNICEF", "ICRC", "Save the Children"],
-    investigateQuery: "Vad är kopplingen mellan vapenexport och barnadödlighet i Jemen?",
+const UI = {
+  sv: {
+    back: "← Krigets Arv",
+    title: "Utforska konflikter",
+    legend_critical: "Kritisk",
+    legend_serious: "Allvarlig",
+    hint: "Klicka på en markör för att se konfliktdata",
+    copy: "Kopiera med källa",
+    copied: "✓ Kopierat!",
+    investigate_btn: "Utred vidare →",
+    severity_critical: "KRITISK",
+    severity_serious: "ALLVARLIG",
+    copy_conflict: "KONFLIKT",
+    copy_stats: "STATISTIK",
+    copy_arms: "VAPENKOPPLING",
+    copy_sources: "KÄLLOR",
+    copy_footer: "Källa: Krigets Arv – krigets-arv.se",
   },
-  {
-    id: "ukraina", name: "Ukraina",
-    lng: 31.1656, lat: 48.3794, severity: "critical",
-    description: "Systematiska attacker mot skolor – 'educide' mot en hel generation barn.",
-    stats: [
-      { label: "Barn fördrivna", value: "7.5M" },
-      { label: "Skolor förstörda", value: "3 800+" },
-      { label: "Barn med PTSD", value: "miljoner" },
-    ],
-    arms: "Ryssland finansierar krig med vapenprofiter – barn betalar priset",
-    sources: ["UNICEF", "FN", "PMC"],
-    investigateQuery: "Hur påverkar det ryska kriget i Ukraina barns psykiska hälsa och utbildning?",
+  en: {
+    back: "← Legacy of War",
+    title: "Explore conflicts",
+    legend_critical: "Critical",
+    legend_serious: "Serious",
+    hint: "Click on a marker to view conflict data",
+    copy: "Copy with source",
+    copied: "✓ Copied!",
+    investigate_btn: "Investigate further →",
+    severity_critical: "CRITICAL",
+    severity_serious: "SERIOUS",
+    copy_conflict: "CONFLICT",
+    copy_stats: "STATISTICS",
+    copy_arms: "ARMS CONNECTION",
+    copy_sources: "SOURCES",
+    copy_footer: "Source: The Legacy of War – krigets-arv.se",
   },
-  {
-    id: "sudan", name: "Sudan",
-    lng: 30.2176, lat: 12.8628, severity: "critical",
-    description: "Massiv flykt från al-Fasher. Barnsoldater och hungersnöd på akut nivå.",
-    stats: [
-      { label: "Fördrivna barn", value: "14M" },
-      { label: "Barnsoldater", value: "stigande" },
-      { label: "Svältrisk", value: "akut" },
-    ],
-    arms: "Vapen från UAE och Ryssland till RSF-milisen",
-    sources: ["ICRC", "OCHA", "Save the Children"],
-    investigateQuery: "Hur drabbas barn i Sudans humanitära kris och vilka aktörer levererar vapen?",
-  },
-  {
-    id: "gaza", name: "Gaza",
-    lng: 34.3088, lat: 31.3547, severity: "critical",
-    description: "Domicide – massförstörelse. Varje fem sekunder skadas ett barn.",
-    stats: [
-      { label: "Barn i konfliktzon", value: "1.1M" },
-      { label: "Skolbarn utan utbildning", value: "625 000" },
-      { label: "Barn med trauma", value: "nästan alla" },
-    ],
-    arms: "USA-levererade vapen används i konflikten",
-    sources: ["UNICEF", "OCHA", "WHO"],
-    investigateQuery: "Hur påverkas barn i Gaza och vad är kopplingen till internationell vapenexport?",
-  },
-  {
-    id: "syrien", name: "Syrien",
-    lng: 38.9968, lat: 34.8021, severity: "high",
-    description: "14 år av konflikt. Ryskt/kinesiskt veto blockerade humanitär hjälp i FN.",
-    stats: [
-      { label: "Fördrivna barn", value: "6M" },
-      { label: "År i konflikt", value: "14+" },
-      { label: "Barndödlighet", value: "kraftigt förhöjd" },
-    ],
-    arms: "Ryssland och Iran levererade vapen till Assad-regimen",
-    sources: ["UNICEF", "FN", "HRW"],
-    investigateQuery: "Hur har FN:s säkerhetsråd misslyckats med att skydda barn i Syrien?",
-  },
-  {
-    id: "sydsudan", name: "Sydsudan",
-    lng: 31.3070, lat: 6.8770, severity: "high",
-    description: "Rekrytering av barnsoldater och sexuellt våld på rekordhög nivå.",
-    stats: [
-      { label: "Fördrivna barn", value: "4M" },
-      { label: "Barnsoldater", value: "19 000+" },
-      { label: "Sexuellt våld mot barn", value: "+50% på 5 år" },
-    ],
-    arms: "Vapen från Uganda, Sudan och Kina till stridande parter",
-    sources: ["ICRC", "FN", "ISS Africa"],
-    investigateQuery: "Hur rekryteras barnsoldater i Sydsudan och vilka är de bakomliggande orsakerna?",
-  },
-];
-
-type Conflict = typeof CONFLICTS[0];
+};
 
 export default function ExplorePage() {
+  const { locale } = useParams() as { locale: string };
+  const ui = UI[locale as keyof typeof UI] ?? UI.sv;
+  const CONFLICTS = getConflicts(locale);
+
   const [selected, setSelected] = useState<Conflict | null>(null);
   const [copied, setCopied] = useState(false);
   const [viewState, setViewState] = useState({ longitude: 30, latitude: 20, zoom: 2.2 });
 
+  // Stäng popup om locale byts
+  useEffect(() => {
+    setSelected(null);
+    setCopied(false);
+  }, [locale]);
+
   function copyWithSource(conflict: Conflict) {
     const text = [
-      `KONFLIKT: ${conflict.name}`,
+      `${ui.copy_conflict}: ${conflict.name}`,
       ``,
       conflict.description,
       ``,
-      `STATISTIK:`,
+      `${ui.copy_stats}:`,
       ...conflict.stats.map((s) => `• ${s.label}: ${s.value}`),
       ``,
-      `VAPENKOPPLING: ${conflict.arms}`,
+      `${ui.copy_arms}: ${conflict.arms}`,
       ``,
-      `KÄLLOR: ${conflict.sources.join(", ")}`,
+      `${ui.copy_sources}: ${conflict.sources.join(", ")}`,
       ``,
-      `Källa: Krigets Arv – krigets-arv.se`,
+      ui.copy_footer,
     ].join("\n");
 
     navigator.clipboard.writeText(text).then(() => {
@@ -116,7 +83,7 @@ export default function ExplorePage() {
   }
 
   function investigateConflict(conflict: Conflict) {
-    const url = `/sv/investigate?q=${encodeURIComponent(conflict.investigateQuery)}`;
+    const url = `/${locale}/investigate?q=${encodeURIComponent(conflict.investigateQuery)}`;
     window.open(url, "_blank");
   }
 
@@ -124,21 +91,21 @@ export default function ExplorePage() {
     <div className="min-h-screen bg-[#080808] flex flex-col">
       <div className="border-b border-zinc-800/80 px-8 py-4 md:px-14 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <Link href="/sv" className="text-zinc-600 hover:text-zinc-400 text-xs font-mono transition-colors">← Krigets Arv</Link>
+          <Link href={`/${locale}`} className="text-zinc-600 hover:text-zinc-400 text-xs font-mono transition-colors">{ui.back}</Link>
           <span className="text-zinc-800">/</span>
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
-            <span className="text-xs font-mono tracking-widest text-zinc-400 uppercase">Utforska konflikter</span>
+            <span className="text-xs font-mono tracking-widest text-zinc-400 uppercase">{ui.title}</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-red-600" />
-            <span className="text-[10px] text-zinc-600 font-mono">Kritisk</span>
+            <span className="text-[10px] text-zinc-600 font-mono">{ui.legend_critical}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-orange-600" />
-            <span className="text-[10px] text-zinc-600 font-mono">Allvarlig</span>
+            <span className="text-[10px] text-zinc-600 font-mono">{ui.legend_serious}</span>
           </div>
         </div>
       </div>
@@ -168,14 +135,12 @@ export default function ExplorePage() {
               <Popup longitude={selected.lng} latitude={selected.lat} anchor="bottom"
                 onClose={() => setSelected(null)} closeOnClick={false} className="conflict-popup">
                 <div className="bg-zinc-900 border border-zinc-700 min-w-[300px]">
-                  {/* Header */}
                   <div className="border-b border-zinc-700 px-4 py-2 flex items-center justify-between">
                     <span className="text-xs font-bold text-white uppercase tracking-wider">{selected.name}</span>
                     <span className={`text-[9px] font-mono px-2 py-0.5 ${selected.severity === "critical" ? "bg-red-900/60 text-red-300" : "bg-orange-900/60 text-orange-300"}`}>
-                      {selected.severity === "critical" ? "KRITISK" : "ALLVARLIG"}
+                      {selected.severity === "critical" ? ui.severity_critical : ui.severity_serious}
                     </span>
                   </div>
-                  {/* Body */}
                   <div className="px-4 py-3 space-y-3">
                     <p className="text-zinc-300 text-xs leading-relaxed">{selected.description}</p>
                     <div className="grid grid-cols-3 gap-2 border-t border-zinc-800 pt-3">
@@ -194,15 +159,14 @@ export default function ExplorePage() {
                         <span key={s} className="text-[9px] px-1.5 py-0.5 bg-zinc-800 text-zinc-400 font-mono">{s}</span>
                       ))}
                     </div>
-                    {/* Action buttons */}
                     <div className="flex gap-2 border-t border-zinc-800 pt-3">
                       <button onClick={() => copyWithSource(selected)}
                         className={`flex-1 text-[10px] font-bold uppercase tracking-wider px-3 py-2 transition-colors ${copied ? "bg-green-800 text-green-200" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}>
-                        {copied ? "✓ Kopierat!" : "Kopiera med källa"}
+                        {copied ? ui.copied : ui.copy}
                       </button>
                       <button onClick={() => investigateConflict(selected)}
                         className="flex-1 text-[10px] font-bold uppercase tracking-wider px-3 py-2 bg-red-800 hover:bg-red-700 text-red-100 transition-colors">
-                        Utred vidare →
+                        {ui.investigate_btn}
                       </button>
                     </div>
                   </div>
@@ -213,7 +177,7 @@ export default function ExplorePage() {
           {!selected && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
               <div className="bg-black/70 backdrop-blur-sm border border-zinc-800 px-4 py-2">
-                <p className="text-[11px] text-zinc-400 font-mono tracking-wider">Klicka på en markör för att se konfliktdata</p>
+                <p className="text-[11px] text-zinc-400 font-mono tracking-wider">{ui.hint}</p>
               </div>
             </div>
           )}

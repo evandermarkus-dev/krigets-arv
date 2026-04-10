@@ -75,10 +75,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { messages, mode } = await req.json();
+    const { messages, mode, locale } = await req.json();
     if (!messages?.length) return NextResponse.json({ error: "Meddelanden saknas" }, { status: 400 });
 
-    const systemPrompt = BASE_PROMPT + (mode === "compact" ? COMPACT_ADDITION : DETAILED_ADDITION);
+    const languageInstruction = locale === "en"
+      ? "\n\nLANGUAGE: You MUST answer in English only, regardless of the question language."
+      : "\n\nSPRÅK: Svara alltid på svenska.";
+
+    const systemPrompt = BASE_PROMPT + (mode === "compact" ? COMPACT_ADDITION : DETAILED_ADDITION) + languageInstruction;
     const modelMessages = await convertToModelMessages(messages);
 
     const result = streamText({

@@ -36,7 +36,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className="dark">
       <body className="bg-zinc-950 text-zinc-100 min-h-screen">
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
         </NextIntlClientProvider>
       </body>

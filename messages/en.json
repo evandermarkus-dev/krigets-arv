@@ -9,26 +9,74 @@
     "title": "The Legacy of War",
     "subtitle": "Power, Profit and the Children's Crisis",
     "description": "Explore the connections between geopolitics, arms profits and children's suffering in armed conflicts.",
-    "cta": "Start exploring"
+    "cta": "Start exploring",
+    "badge": "Investigative report · 2025–2026",
+    "ai_link": "AI Investigator",
+    "stat1_label": "Source documents",
+    "stat1_sub": "UNICEF · SIPRI · ICRC · HRW",
+    "stat2_label": "Violations against children 2024",
+    "stat2_sub": "UN documented violations",
+    "stat3_label": "Increase since 2023",
+    "stat3_sub": "Save the Children"
   },
   "explore": {
     "title": "Explore conflicts",
-    "description": "Click on a country to see conflicts, actors and consequences for children."
+    "description": "Click on a country to see conflicts, actors and consequences for children.",
+    "back": "← Legacy of War",
+    "legend_critical": "Critical",
+    "legend_serious": "Serious",
+    "hint": "Click on a marker to view conflict data",
+    "copy": "Copy with source",
+    "copied": "✓ Copied!",
+    "investigate_btn": "Investigate further →",
+    "severity_critical": "CRITICAL",
+    "severity_serious": "SERIOUS",
+    "copy_conflict": "CONFLICT",
+    "copy_stats": "STATISTICS",
+    "copy_arms": "ARMS CONNECTION",
+    "copy_sources": "SOURCES",
+    "copy_footer": "Source: The Legacy of War – krigets-arv.se"
   },
   "investigate": {
     "title": "AI Investigator",
     "placeholder": "Ask a question about the consequences of war for children...",
-    "submit": "Ask"
+    "submit": "Ask",
+    "back": "← Legacy of War",
+    "compact": "Compact",
+    "detailed": "Detailed",
+    "ask_title": "Ask a question",
+    "ask_desc": "The AI investigator responds based on 366 curated source documents. Choose Compact for quick facts or Detailed for in-depth analysis.",
+    "suggested_label": "Suggested questions",
+    "footer": "Answers based on curated source material · UNICEF · SIPRI · ICRC · UN · Mode",
+    "mode_compact": "Compact",
+    "mode_detailed": "Detailed"
   },
   "perspectives": {
     "title": "Perspectives",
     "child": "An affected child",
     "diplomat": "A UN diplomat",
-    "lobbyist": "An arms lobbyist"
+    "lobbyist": "An arms lobbyist",
+    "back": "← Legacy of War",
+    "change": "← Change perspective",
+    "choose_title": "Choose a perspective",
+    "choose_desc": "Six voices. The same war. Each perspective is based on documented facts – to foster understanding, not entertainment.",
+    "badge": "PERSPECTIVE",
+    "warning": "⚠️ The perspectives are based on documented testimonies and facts from UNICEF, ICRC, MSF and SIPRI.",
+    "submit": "Ask",
+    "footer": "Based on documented facts · UNICEF · ICRC · SIPRI · UN"
   },
   "factbank": {
     "title": "Fact Bank",
     "copy": "Copy with source",
-    "download": "Download PDF"
+    "download": "Download PDF",
+    "back": "← Legacy of War",
+    "filter_all": "All",
+    "of": "of",
+    "hint": "facts · Click to expand · Copy with context",
+    "context_label": "Context & analysis",
+    "copied": "✓ Copied",
+    "copy_context": "CONTEXT",
+    "copy_via": "Via: The Legacy of War – krigets-arv.se",
+    "footer": "All facts are based on verified sources · UNICEF · SIPRI · ICRC · UN · Save the Children · PMC"
   }
 }

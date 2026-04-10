@@ -9,26 +9,74 @@
     "title": "Krigets Arv",
     "subtitle": "Makt, Profit och Barns Kris",
     "description": "Utforska sambanden mellan geopolitik, vapenprofiter och barns lidande i väpnade konflikter.",
-    "cta": "Börja utforska"
+    "cta": "Börja utforska",
+    "badge": "Investigativ rapport · 2025–2026",
+    "ai_link": "AI-Utredaren",
+    "stat1_label": "Källdokument",
+    "stat1_sub": "UNICEF · SIPRI · ICRC · HRW",
+    "stat2_label": "Brott mot barn 2024",
+    "stat2_sub": "FN dokumenterade övergrepp",
+    "stat3_label": "Ökning sedan 2023",
+    "stat3_sub": "Save the Children"
   },
   "explore": {
     "title": "Utforska konflikter",
-    "description": "Klicka på ett land för att se konflikter, aktörer och konsekvenser för barn."
+    "description": "Klicka på ett land för att se konflikter, aktörer och konsekvenser för barn.",
+    "back": "← Krigets Arv",
+    "legend_critical": "Kritisk",
+    "legend_serious": "Allvarlig",
+    "hint": "Klicka på en markör för att se konfliktdata",
+    "copy": "Kopiera med källa",
+    "copied": "✓ Kopierat!",
+    "investigate_btn": "Utred vidare →",
+    "severity_critical": "KRITISK",
+    "severity_serious": "ALLVARLIG",
+    "copy_conflict": "KONFLIKT",
+    "copy_stats": "STATISTIK",
+    "copy_arms": "VAPENKOPPLING",
+    "copy_sources": "KÄLLOR",
+    "copy_footer": "Källa: Krigets Arv – krigets-arv.se"
   },
   "investigate": {
     "title": "AI-utredaren",
     "placeholder": "Ställ en fråga om krigets konsekvenser för barn...",
-    "submit": "Fråga"
+    "submit": "Fråga",
+    "back": "← Krigets Arv",
+    "compact": "Kompakt",
+    "detailed": "Utförlig",
+    "ask_title": "Ställ en fråga",
+    "ask_desc": "AI-utredaren svarar baserat på 366 kuraterade källdokument. Välj Kompakt för snabba fakta eller Utförlig för djupanalys.",
+    "suggested_label": "Föreslagna frågor",
+    "footer": "Svar baseras på kuraterat källmaterial · UNICEF · SIPRI · ICRC · FN · Läge",
+    "mode_compact": "Kompakt",
+    "mode_detailed": "Utförlig"
   },
   "perspectives": {
     "title": "Perspektiv",
     "child": "Ett drabbat barn",
     "diplomat": "En FN-diplomat",
-    "lobbyist": "En vapenlobbyist"
+    "lobbyist": "En vapenlobbyist",
+    "back": "← Krigets Arv",
+    "change": "← Byt perspektiv",
+    "choose_title": "Välj ett perspektiv",
+    "choose_desc": "Sex röster. Samma krig. Varje perspektiv är baserat på dokumenterade fakta – för att skapa förståelse, inte underhållning.",
+    "badge": "PERSPEKTIV",
+    "warning": "⚠️ Perspektiven är baserade på dokumenterade vittnesmål och fakta från UNICEF, ICRC, MSF och SIPRI.",
+    "submit": "Fråga",
+    "footer": "Baserat på dokumenterade fakta · UNICEF · ICRC · SIPRI · FN"
   },
   "factbank": {
     "title": "Faktabanken",
     "copy": "Kopiera med källa",
-    "download": "Ladda ner PDF"
+    "download": "Ladda ner PDF",
+    "back": "← Krigets Arv",
+    "filter_all": "Alla",
+    "of": "av",
+    "hint": "fakta · Klicka för att expandera · Kopiera med kontext",
+    "context_label": "Kontext & analys",
+    "copied": "✓ Kopierat",
+    "copy_context": "KONTEXT",
+    "copy_via": "Via: Krigets Arv – krigets-arv.se",
+    "footer": "Alla fakta är baserade på verifierade källor · UNICEF · SIPRI · ICRC · FN · Save the Children · PMC"
   }
 }
