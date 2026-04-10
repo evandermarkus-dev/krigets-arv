@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   if (investigateRatelimit) {
     const { success } = await investigateRatelimit.limit(ip);
     if (!success) {
-      return NextResponse.json({ error: "För många förfrågningar. Vänta en minut." }, { status: 429 });
+      return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
     }
   }
 

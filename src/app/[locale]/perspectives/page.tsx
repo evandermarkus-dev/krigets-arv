@@ -267,7 +267,7 @@ Svara som Olena – personlig, konkret, faktaförankrad. Referera till UNICEF:s 
 
 type Role = ReturnType<typeof getRoles>[0];
 
-function PerspectiveChat({ role, ui }: { role: Role; ui: typeof UI.sv }) {
+function PerspectiveChat({ role, ui, locale }: { role: Role; ui: typeof UI.sv; locale: string }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
   const didTriggerMonologue = useRef(false);
@@ -275,7 +275,7 @@ function PerspectiveChat({ role, ui }: { role: Role; ui: typeof UI.sv }) {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/perspectives",
-      body: { systemPrompt: role.systemPrompt },
+      body: { systemPrompt: role.systemPrompt, locale },
     }),
   });
 
@@ -435,7 +435,7 @@ export default function PerspectivesPage() {
         </div>
       )}
 
-      {selectedRole && <PerspectiveChat key={selectedRole.id} role={selectedRole} ui={ui} />}
+      {selectedRole && <PerspectiveChat key={selectedRole.id} role={selectedRole} ui={ui} locale={locale} />}
     </div>
   );
 }

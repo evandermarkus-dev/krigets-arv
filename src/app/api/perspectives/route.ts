@@ -11,17 +11,21 @@ export async function POST(req: NextRequest) {
   if (perspectivesRatelimit) {
     const { success } = await perspectivesRatelimit.limit(ip);
     if (!success) {
-      return NextResponse.json({ error: "För många förfrågningar. Vänta en minut." }, { status: 429 });
+      return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
     }
   }
 
   try {
-    const { messages, systemPrompt } = await req.json();
+    const { messages, systemPrompt, locale } = await req.json();
+
+    const monologueTrigger = locale === "en"
+      ? "Introduce yourself and begin your story."
+      : "Presentera dig och börja din berättelse.";
 
     // Replace START_MONOLOGUE trigger with actual prompt in last message
     const processedMessages = messages.map((m: { role: string; content: unknown }, i: number) =>
       i === messages.length - 1 && m.content === "START_MONOLOGUE"
-        ? { ...m, content: "Presentera dig och börja din berättelse." }
+        ? { ...m, content: monologueTrigger }
         : m
     );
 

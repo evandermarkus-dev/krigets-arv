@@ -56,9 +56,9 @@ export default async function HomePage({
 
         <h1 style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
             className="text-[clamp(5rem,12vw,10rem)] font-black leading-[0.85] tracking-tight text-white mb-10">
-          Krigets<br />
+          {t("h1_line1")}<br />
           <span className="relative inline-block text-red-500">
-            Arv
+            {t("h1_line2")}
             <span className="absolute -bottom-1 left-0 h-[3px] w-full bg-red-600" />
           </span>
         </h1>
