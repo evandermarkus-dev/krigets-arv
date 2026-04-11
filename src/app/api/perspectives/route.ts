@@ -3,6 +3,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
 import { perspectivesRatelimit } from "@/lib/ratelimit";
+import { MONOLOGUE_TRIGGERS } from "@/config/prompts";
 
 export const maxDuration = 60;
 
@@ -18,9 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, systemPrompt, locale } = await req.json();
 
-    const monologueTrigger = locale === "en"
-      ? "Introduce yourself and begin your story."
-      : "Presentera dig och börja din berättelse.";
+    const monologueTrigger = MONOLOGUE_TRIGGERS[locale] ?? MONOLOGUE_TRIGGERS.sv;
 
     // Replace START_MONOLOGUE trigger with actual prompt in last message
     const processedMessages = messages.map((m: { role: string; content: unknown }, i: number) =>
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
     const modelMessages = await convertToModelMessages(processedMessages);
 
     const result = streamText({
-      model: anthropic("claude-sonnet-4-5"),
+      model: anthropic("claude-sonnet-4.6"),
       system: systemPrompt,
       messages: modelMessages,
       maxOutputTokens: 512,
