@@ -8,7 +8,7 @@ import { getInvestigateSystemPrompt } from "@/config/prompts";
 
 // Wrappa modellen med RAG-middleware — injicerar live-sökresultat i varje anrop
 const model = wrapLanguageModel({
-  model: anthropicProvider("claude-sonnet-4.6"),
+  model: anthropicProvider("claude-sonnet-4-6"),
   middleware: ragMiddleware,
 });
 

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const modelMessages = await convertToModelMessages(processedMessages);
 
     const result = streamText({
-      model: anthropic("claude-sonnet-4.6"),
+      model: anthropic("claude-sonnet-4-6"),
       system: systemPrompt,
       messages: modelMessages,
       maxOutputTokens: 512,

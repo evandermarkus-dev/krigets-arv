@@ -1,10 +1,12 @@
 import FirecrawlApp, { type SearchResultWeb } from "@mendable/firecrawl-js";
+import { PRIMARY_DOMAINS, TRUSTED_DOMAINS, getDomainName } from "@/config/sources";
 
 export interface SearchResult {
   url: string;
   title: string;
   description: string;
   markdown: string;
+  sourceName: string;
 }
 
 // Returnerar null om FIRECRAWL_API_KEY saknas (lokal dev utan nyckel).
@@ -15,7 +17,12 @@ function getClient(): FirecrawlApp | null {
 }
 
 /**
- * Söker efter relevanta dokument med Firecrawl.
+ * Söker efter relevanta dokument med Firecrawl, begränsat till betrodda domäner.
+ *
+ * Strategi med fallback i två steg:
+ *   1. Söker prio-1-domäner (UNICEF, SIPRI, ICRC, HRW, ReliefWeb, OHCHR, Save the Children)
+ *   2. Om < 2 träffar — utvidgar till alla betrodda domäner
+ *
  * Returnerar max `limit` resultat, eller [] vid fel/saknad nyckel.
  */
 export async function searchSources(
@@ -25,26 +32,37 @@ export async function searchSources(
   const client = getClient();
   if (!client) return [];
 
-  try {
+  const runSearch = async (domains: string[]): Promise<SearchResult[]> => {
     const response = await client.search(query, {
       limit,
+      includeDomains: domains,
       scrapeOptions: { formats: ["markdown"] },
     });
 
-    // SearchData returnerar { web, news, images } — vi använder web-resultat
-    // Castar till SearchResultWeb[] eftersom web-sökning alltid ger den typen
     const webResults = (response.web ?? []) as SearchResultWeb[];
-    if (webResults.length === 0) return [];
-
     return webResults
-      .slice(0, limit)
       .filter((r) => r.url)
-      .map((r) => ({
-        url: r.url,
-        title: r.title ?? r.url,
-        description: r.description ?? "",
-        markdown: (r.description ?? "").slice(0, 1500),
-      }));
+      .slice(0, limit)
+      .map((r) => {
+        const domain = new URL(r.url).hostname.replace("www.", "");
+        return {
+          url: r.url,
+          title: r.title ?? r.url,
+          description: r.description ?? "",
+          markdown: (r.description ?? "").slice(0, 1500),
+          sourceName: getDomainName(domain),
+        };
+      });
+  };
+
+  try {
+    // Steg 1: prio-1-domäner
+    const primary = await runSearch(PRIMARY_DOMAINS);
+    if (primary.length >= 2) return primary;
+
+    // Steg 2: fallback till alla betrodda domäner
+    console.log("[Firecrawl] fallback till alla betrodda domäner");
+    return await runSearch(TRUSTED_DOMAINS);
   } catch (err) {
     console.error("[Firecrawl] search failed:", err);
     return [];
