@@ -1,6 +1,13 @@
 import FirecrawlApp, { type SearchResultWeb } from "@mendable/firecrawl-js";
 import { PRIMARY_DOMAINS, TRUSTED_DOMAINS, getDomainName } from "@/config/sources";
 
+// includeDomains is a valid Firecrawl API parameter but missing from SDK TypeScript types.
+// We use unknown as an intermediate to cast the search function to a typed signature.
+type FirecrawlSearchWithDomains = (
+  query: string,
+  options: { limit?: number; includeDomains?: string[]; scrapeOptions?: { formats: string[] } }
+) => ReturnType<FirecrawlApp["search"]>;
+
 export interface SearchResult {
   url: string;
   title: string;
@@ -33,13 +40,12 @@ export async function searchSources(
   if (!client) return [];
 
   const runSearch = async (domains: string[]): Promise<SearchResult[]> => {
-    // includeDomains is a valid Firecrawl API param but missing from SDK types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await client.search(query, {
+    const search = client.search.bind(client) as unknown as FirecrawlSearchWithDomains;
+    const response = await search(query, {
       limit,
       includeDomains: domains,
       scrapeOptions: { formats: ["markdown"] },
-    } as any);
+    });
 
     const webResults = (response.web ?? []) as SearchResultWeb[];
     return webResults
