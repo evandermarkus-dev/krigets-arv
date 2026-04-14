@@ -18,7 +18,7 @@ export default async function HomePage({
           │  Välj ett foto, klicka "Download free" → kopiera bildens adress → klistra in nedan.
           └─ Bra sökord: "child alone field", "child back horizon", "lonely child landscape" */}
       <div className="absolute inset-0 z-0" style={{
-        backgroundImage: `url('https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1600&q=80')`,
+        backgroundImage: `url('/hero.jpg')`,
         backgroundSize: "cover",
         backgroundPosition: "62% 38%",
         filter: "grayscale(85%) brightness(0.50) sepia(15%)",
