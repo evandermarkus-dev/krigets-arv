@@ -11,25 +11,29 @@ export default async function HomePage({
   const nav = await getTranslations({ locale, namespace: "nav" });
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#080808]">
+    <main className="relative min-h-screen overflow-hidden bg-[#06050a]">
 
-      {/* Background photo – refugees/conflict, grayscale, visible */}
+      {/* Background photo – child from behind looking at a landscape/horizon.
+          ┌─ BYTA BILD: Gå till https://unsplash.com/s/photos/child-alone-landscape
+          │  Välj ett foto, klicka "Download free" → kopiera bildens adress → klistra in nedan.
+          └─ Bra sökord: "child alone field", "child back horizon", "lonely child landscape" */}
       <div className="absolute inset-0 z-0" style={{
-        backgroundImage: `url('https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=1600&q=80')`,
+        backgroundImage: `url('https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1600&q=80')`,
         backgroundSize: "cover",
-        backgroundPosition: "center 40%",
-        filter: "grayscale(100%) brightness(0.65)",
+        backgroundPosition: "62% 38%",
+        filter: "grayscale(85%) brightness(0.50) sepia(15%)",
       }} />
 
-      {/* Left: dark fade so text reads cleanly. Right: photo shows through */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/95 via-black/70 to-transparent" />
-      <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+      {/* Left panel: hard dark for text legibility */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/98 via-black/80 to-black/10" />
+      {/* Top fade */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/60 via-transparent to-transparent" />
+      {/* Bottom: warm amber glow — suggests dusk/horizon */}
+      <div className="absolute bottom-0 left-0 right-0 z-0 h-72 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+      <div className="absolute bottom-0 left-0 z-0 h-48 w-[60%] bg-gradient-to-r from-amber-950/20 to-transparent blur-[60px]" />
 
-      {/* Subtle red glow at bottom-left */}
-      <div className="absolute bottom-0 left-0 z-0 h-64 w-96 bg-red-950/40 blur-[80px]" />
-
-      {/* Grain */}
-      <div className="pointer-events-none absolute inset-0 z-10 opacity-[0.05]"
+      {/* Grain – ger filmisk textur */}
+      <div className="pointer-events-none absolute inset-0 z-10 opacity-[0.06]"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize: "200px" }}
       />
 
