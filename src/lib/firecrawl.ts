@@ -33,11 +33,13 @@ export async function searchSources(
   if (!client) return [];
 
   const runSearch = async (domains: string[]): Promise<SearchResult[]> => {
+    // includeDomains is a valid Firecrawl API param but missing from SDK types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await client.search(query, {
       limit,
       includeDomains: domains,
       scrapeOptions: { formats: ["markdown"] },
-    });
+    } as any);
 
     const webResults = (response.web ?? []) as SearchResultWeb[];
     return webResults
