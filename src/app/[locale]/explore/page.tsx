@@ -48,11 +48,20 @@ const UI = {
 export default function ExplorePage() {
   const { locale } = useParams() as { locale: string };
   const ui = UI[locale as keyof typeof UI] ?? UI.sv;
-  const CONFLICTS = getConflicts(locale);
 
+  const [conflicts, setConflicts] = useState<Conflict[]>(() => getConflicts(locale));
   const [selected, setSelected] = useState<Conflict | null>(null);
   const [copied, setCopied] = useState(false);
   const [viewState, setViewState] = useState({ longitude: 30, latitude: 20, zoom: 2.2 });
+
+  // Hämta live-data från Supabase via API; faller tillbaka på hårdkodad data vid fel
+  useEffect(() => {
+    setConflicts(getConflicts(locale));
+    fetch(`/api/conflicts?locale=${locale}`)
+      .then((r) => r.json())
+      .then((data: Conflict[]) => { if (Array.isArray(data)) setConflicts(data); })
+      .catch(() => { /* behåll hårdkodad data */ });
+  }, [locale]);
 
   // Stäng popup om locale byts
   useEffect(() => {
@@ -120,7 +129,7 @@ export default function ExplorePage() {
             style={{ width: "100%", height: "100%" }}
           >
             <NavigationControl position="bottom-right" />
-            {CONFLICTS.map((c) => (
+            {conflicts.map((c: Conflict) => (
               <Marker key={c.id} longitude={c.lng} latitude={c.lat} anchor="center"
                 onClick={(e) => { e.originalEvent.stopPropagation(); setSelected(c); setCopied(false); }}>
                 <div className="cursor-pointer relative">
