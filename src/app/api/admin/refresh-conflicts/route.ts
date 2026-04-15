@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { updateConflict } from "@/lib/conflict-updater";
 import { CONFLICTS_SV } from "@/data/conflicts";
+import { supabase } from "@/lib/supabase";
 
 /**
  * POST /api/admin/refresh-conflicts
@@ -24,9 +25,24 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const singleId = typeof body.conflictId === "string" ? body.conflictId : null;
 
+  // Hämta dynamiska konflikter från Supabase och slå ihop med hårdkodade
+  const { data: dynamicMeta } = await supabase
+    .from("conflict_meta")
+    .select("id, name_sv, active")
+    .eq("active", true);
+
+  const dynamicConflicts = (dynamicMeta ?? [])
+    .filter((m) => !CONFLICTS_SV.some((c) => c.id === m.id))
+    .map((m) => ({ id: m.id, name: m.name_sv }));
+
+  const allConflicts = [
+    ...CONFLICTS_SV.map((c) => ({ id: c.id, name: c.name })),
+    ...dynamicConflicts,
+  ];
+
   const conflicts = singleId
-    ? CONFLICTS_SV.filter((c) => c.id === singleId)
-    : CONFLICTS_SV;
+    ? allConflicts.filter((c) => c.id === singleId)
+    : allConflicts;
 
   if (conflicts.length === 0) {
     return new Response(JSON.stringify({ error: "Konflikt-id hittades inte" }), {

@@ -17,6 +17,8 @@ type NdjsonEvent =
   | { type: "done"; conflictId: string; sv: { success: boolean; error?: string }; en: { success: boolean; error?: string } }
   | { type: "complete"; total: number };
 
+const EMPTY_NEW = { id: "", name_sv: "", name_en: "", lat: "", lng: "", severity: "critical" as "critical" | "high", query_sv: "", query_en: "" };
+
 export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [running, setRunning] = useState(false);
@@ -25,6 +27,9 @@ export default function AdminPage() {
   );
   const [log, setLog] = useState<string[]>([]);
   const [authError, setAuthError] = useState(false);
+  const [newConflict, setNewConflict] = useState(EMPTY_NEW);
+  const [addStatus, setAddStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [addError, setAddError] = useState("");
 
   function appendLog(msg: string) {
     setLog((prev) => [...prev, msg]);
@@ -116,6 +121,41 @@ export default function AdminPage() {
     setRunning(false);
   }
 
+  async function addNewConflict() {
+    setAddStatus("saving");
+    setAddError("");
+    try {
+      const res = await fetch("/api/conflicts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${password}`,
+        },
+        body: JSON.stringify({
+          ...newConflict,
+          lat: parseFloat(newConflict.lat),
+          lng: parseFloat(newConflict.lng),
+        }),
+      });
+
+      if (res.status === 401) { setAddError("Fel lösenord"); setAddStatus("error"); return; }
+      const data = await res.json();
+      if (!data.success) { setAddError(data.error ?? "Okänt fel"); setAddStatus("error"); return; }
+
+      setAddStatus("done");
+      setNewConflict(EMPTY_NEW);
+      // Lägg till i statuslistan så den kan uppdateras direkt
+      setStatuses((prev) => [...prev, { id: newConflict.id, name: newConflict.name_sv, state: "idle" }]);
+      setTimeout(() => setAddStatus("idle"), 3000);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Okänt fel");
+      setAddStatus("error");
+    }
+  }
+
+  const canAdd = newConflict.id && newConflict.name_sv && newConflict.name_en &&
+    newConflict.lat && newConflict.lng && password && addStatus !== "saving";
+
   return (
     <div className="min-h-screen bg-[#08080a] text-zinc-300 font-mono">
       {/* Header */}
@@ -134,29 +174,27 @@ export default function AdminPage() {
         {/* Auth */}
         <section className="space-y-3">
           <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Autentisering</h2>
-          <div className="flex gap-3">
-            <input
-              type="password"
-              placeholder="CRON_SECRET"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="flex-1 bg-zinc-900 border border-zinc-700 px-4 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
-            />
-          </div>
+          <input
+            type="password"
+            placeholder="CRON_SECRET"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-700 px-4 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+          />
           {authError && (
-            <p className="text-[11px] text-red-400">Fel lösenord — kontrollera CRON_SECRET</p>
+            <p className="text-[11px] text-red-400">Fel lösenord — kontrollera CRON_SECRET i Vercel</p>
           )}
         </section>
 
         {/* Global action */}
         <section className="space-y-3">
-          <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Åtgärder</h2>
+          <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Uppdatera konfliktdata</h2>
           <button
             onClick={() => runUpdate()}
             disabled={running || !password}
             className="w-full py-3 text-xs font-bold tracking-[0.15em] uppercase bg-red-800 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white transition-colors"
           >
-            {running ? "Uppdaterar…" : "Uppdatera alla konflikter"}
+            {running ? "Uppdaterar…" : "Uppdatera alla konflikter (SV + EN)"}
           </button>
         </section>
 
@@ -185,6 +223,50 @@ export default function AdminPage() {
                 </button>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Lägg till ny konflikt */}
+        <section className="space-y-3">
+          <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Lägg till ny konflikt</h2>
+          <p className="text-[11px] text-zinc-600">Konflikter tillagda här sparas i Supabase och visas direkt på kartan utan ny deploy.</p>
+          <div className="border border-zinc-800 p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <input placeholder="ID (t.ex. irak)" value={newConflict.id}
+                onChange={(e) => setNewConflict((p) => ({ ...p, id: e.target.value.toLowerCase().replace(/\s/g, "-") }))}
+                className="bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+              <select value={newConflict.severity}
+                onChange={(e) => setNewConflict((p) => ({ ...p, severity: e.target.value as "critical" | "high" }))}
+                className="bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500">
+                <option value="critical">Kritisk (röd)</option>
+                <option value="high">Allvarlig (orange)</option>
+              </select>
+            </div>
+            <input placeholder="Namn på svenska (t.ex. Irak)" value={newConflict.name_sv}
+              onChange={(e) => setNewConflict((p) => ({ ...p, name_sv: e.target.value }))}
+              className="w-full bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+            <input placeholder="Namn på engelska (t.ex. Iraq)" value={newConflict.name_en}
+              onChange={(e) => setNewConflict((p) => ({ ...p, name_en: e.target.value }))}
+              className="w-full bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+            <div className="grid grid-cols-2 gap-3">
+              <input placeholder="Latitud (t.ex. 33.22)" value={newConflict.lat}
+                onChange={(e) => setNewConflict((p) => ({ ...p, lat: e.target.value }))}
+                className="bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+              <input placeholder="Longitud (t.ex. 43.68)" value={newConflict.lng}
+                onChange={(e) => setNewConflict((p) => ({ ...p, lng: e.target.value }))}
+                className="bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+            </div>
+            <input placeholder="Utredningsfråga (svenska)" value={newConflict.query_sv}
+              onChange={(e) => setNewConflict((p) => ({ ...p, query_sv: e.target.value }))}
+              className="w-full bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+            <input placeholder="Utredningsfråga (engelska)" value={newConflict.query_en}
+              onChange={(e) => setNewConflict((p) => ({ ...p, query_en: e.target.value }))}
+              className="w-full bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500" />
+            <button onClick={addNewConflict} disabled={!canAdd}
+              className="w-full py-2.5 text-xs font-bold tracking-[0.15em] uppercase bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-white transition-colors">
+              {addStatus === "saving" ? "Sparar…" : addStatus === "done" ? "✓ Tillagd!" : "Lägg till konflikt"}
+            </button>
+            {addError && <p className="text-[11px] text-red-400">{addError}</p>}
           </div>
         </section>
 
