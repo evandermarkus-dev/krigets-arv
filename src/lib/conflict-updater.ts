@@ -107,8 +107,6 @@ export async function updateConflict(
   conflictName: string,
   locale: string
 ): Promise<ConflictUpdateResult> {
-  const isSv = locale === "sv";
-
   // Bygg sökfrågor — engelska ger bäst träff i källorna
   const enName = conflictId === "jemen" ? "Yemen"
     : conflictId === "ukraina" ? "Ukraine"
