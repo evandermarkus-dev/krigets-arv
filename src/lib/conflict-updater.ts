@@ -108,11 +108,17 @@ export async function updateConflict(
   locale: string
 ): Promise<ConflictUpdateResult> {
   // Bygg sökfrågor — engelska ger bäst träff i källorna
-  const enName = conflictId === "jemen" ? "Yemen"
-    : conflictId === "ukraina" ? "Ukraine"
-    : conflictId === "sydsudan" ? "South Sudan"
-    : conflictId === "syrien" ? "Syria"
-    : conflictName;
+  const ID_TO_EN: Record<string, string> = {
+    jemen: "Yemen",
+    ukraina: "Ukraine",
+    sydsudan: "South Sudan",
+    syrien: "Syria",
+    etiopien: "Ethiopia",
+    drc: "DR Congo",
+    libanon: "Lebanon",
+    sahel: "Sahel Mali Burkina Faso",
+  };
+  const enName = ID_TO_EN[conflictId] ?? conflictName;
 
   const queries = [
     `${enName} children casualties 2025`,
