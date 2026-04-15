@@ -87,14 +87,17 @@ Rules: stats array must have exactly 3 items. Use numbers from the source text. 
 
   try {
     const { text } = await generateText({
-      model: anthropicProvider("claude-sonnet-4.6"),
+      model: anthropicProvider("claude-sonnet-4-6"),
       maxOutputTokens: 512,
       system: systemPrompt,
       prompt: userPrompt,
     });
 
-    return JSON.parse(text.trim());
-  } catch {
+    // Strip markdown code fences if Claude wraps the response despite instructions
+    const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    return JSON.parse(clean);
+  } catch (err) {
+    console.error("[extractWithClaude] fel:", err);
     return null;
   }
 }
