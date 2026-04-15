@@ -1,10 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { supabase } from "./supabase";
 import { embedText } from "./embeddings";
 import { searchSources } from "./firecrawl";
 import type { SearchResult } from "./supabase";
 
-const anthropic = new Anthropic();
+const anthropicProvider = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 
 export interface ConflictUpdateResult {
   conflictId: string;
@@ -85,15 +86,14 @@ Rules: stats array must have exactly 3 items. Use numbers from the source text. 
     : `Extract current information about the conflict in ${conflictName} from the following source text:\n\n${context}`;
 
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 512,
+    const { text } = await generateText({
+      model: anthropicProvider("claude-sonnet-4.6"),
+      maxOutputTokens: 512,
       system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+      prompt: userPrompt,
     });
 
-    const raw = (message.content[0] as { type: string; text: string }).text.trim();
-    return JSON.parse(raw);
+    return JSON.parse(text.trim());
   } catch {
     return null;
   }
