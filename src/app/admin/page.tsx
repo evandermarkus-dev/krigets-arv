@@ -57,7 +57,7 @@ export default function AdminPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${password}`,
+          Authorization: `Bearer ${password.trim()}`,
         },
         body: JSON.stringify(conflictId ? { conflictId } : {}),
       });
@@ -129,7 +129,7 @@ export default function AdminPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${password}`,
+          Authorization: `Bearer ${password.trim()}`,
         },
         body: JSON.stringify({
           ...newConflict,
