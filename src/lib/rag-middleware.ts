@@ -28,6 +28,11 @@ const QUERY_TRANSLATIONS: [RegExp, string][] = [
   [/Sudan/i, "Sudan conflict"],
   [/Syrien/i, "Syria conflict"],
   [/Kongo/i, "DRC Congo conflict"],
+  [/Myanmar|Burma/i, "Myanmar conflict"],
+  [/Etiopien|Tigray/i, "Ethiopia Tigray conflict"],
+  [/Somalia/i, "Somalia conflict"],
+  [/Sahel|Mali|Burkina/i, "Sahel Mali Burkina Faso conflict"],
+  [/Libanon/i, "Lebanon conflict"],
 ];
 
 function buildSearchQuery(messages: unknown[]): string {

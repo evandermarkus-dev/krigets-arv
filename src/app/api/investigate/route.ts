@@ -5,6 +5,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { investigateRatelimit } from "@/lib/ratelimit";
 import { ragMiddleware } from "@/lib/rag-middleware";
 import { getInvestigateSystemPrompt } from "@/config/prompts";
+import { supabase } from "@/lib/supabase";
+
+async function getLiveConflictContext(locale: string): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("conflict_stats")
+      .select("conflict_id, description, stats, arms, sources")
+      .eq("locale", locale);
+
+    if (!data?.length) return "";
+
+    const lines = data.map((row) => {
+      const statsStr = Array.isArray(row.stats)
+        ? (row.stats as { label: string; value: string }[]).map((s) => `${s.label}: ${s.value}`).join(", ")
+        : "";
+      const sourcesStr = Array.isArray(row.sources) ? (row.sources as string[]).join(", ") : "";
+      return `- ${row.conflict_id}: ${row.description} | ${statsStr} | Vapen: ${row.arms} | Källor: ${sourcesStr}`;
+    });
+
+    const header = locale === "sv"
+      ? "=== AKTUELL STATISTIK FÖR AKTIVA KONFLIKTER (hämtad från databas) ==="
+      : "=== CURRENT STATISTICS FOR ACTIVE CONFLICTS (fetched from database) ===";
+
+    return `\n\n${header}\n${lines.join("\n")}`;
+  } catch {
+    return "";
+  }
+}
 
 // Wrappa modellen med RAG-middleware — injicerar live-sökresultat i varje anrop
 const model = wrapLanguageModel({
@@ -27,12 +55,15 @@ export async function POST(req: NextRequest) {
     const { messages, mode, locale } = await req.json();
     if (!messages?.length) return NextResponse.json({ error: "Meddelanden saknas" }, { status: 400 });
 
-    const systemPrompt = getInvestigateSystemPrompt(mode, locale);
+    const [systemPrompt, liveContext] = await Promise.all([
+      Promise.resolve(getInvestigateSystemPrompt(mode, locale)),
+      getLiveConflictContext(locale),
+    ]);
     const modelMessages = await convertToModelMessages(messages);
 
     const result = streamText({
       model,
-      system: systemPrompt,
+      system: systemPrompt + liveContext,
       messages: modelMessages,
       maxOutputTokens: mode === "compact" ? 300 : 1024,
     });
