@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getFacts, CATEGORIES, CATEGORIES_EN, COLOR_MAP } from "@/data/facts";
+import type { Conflict } from "@/data/conflicts";
+
+// Konflikter med detaljerade hårdkodade fakta — övriga hämtas live från Supabase
+const COVERED_IDS = new Set(["jemen", "gaza", "ukraina", "myanmar"]);
 
 const UI = {
   sv: {
@@ -50,6 +54,17 @@ export default function FactbankPage() {
   }, [locale]);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [liveConflicts, setLiveConflicts] = useState<Conflict[]>([]);
+  const [liveExpanded, setLiveExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/conflicts?locale=${locale}`)
+      .then((r) => r.json())
+      .then((data: Conflict[]) => {
+        setLiveConflicts(data.filter((c) => !COVERED_IDS.has(c.id) && c.description));
+      })
+      .catch(() => {});
+  }, [locale]);
 
   const filtered = activeCategory === ui.filter_all ? FACTS : FACTS.filter((f) => f.category === activeCategory);
 
@@ -137,6 +152,67 @@ export default function FactbankPage() {
           })}
         </div>
       </div>
+
+      {/* Live-uppdaterade konflikter från Supabase */}
+      {liveConflicts.length > 0 && activeCategory === ui.filter_all && (
+        <div className="px-8 md:px-14 pb-8 max-w-6xl mx-auto">
+          <div className="flex items-center gap-3 mb-4 pt-2">
+            <div className="h-px flex-1 bg-zinc-800" />
+            <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
+              {locale === "sv" ? "Live-uppdaterad data" : "Live-updated data"}
+            </span>
+            <div className="h-px flex-1 bg-zinc-800" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {liveConflicts.map((conflict) => {
+              const isExp = liveExpanded === conflict.id;
+              return (
+                <div key={conflict.id}
+                  className={`border transition-all cursor-pointer ${isExp ? "border-zinc-600 bg-zinc-900/80" : "border-zinc-800 hover:border-zinc-600 bg-zinc-900/30 hover:bg-zinc-900/60"}`}
+                  onClick={() => setLiveExpanded(isExp ? null : conflict.id)}>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-wider">{conflict.name}</span>
+                      <span className="text-[10px] font-mono text-zinc-700">{isExp ? "▲" : "▼"}</span>
+                    </div>
+                    <p className="text-xs text-zinc-400 leading-relaxed mb-3">{conflict.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {conflict.stats.slice(0, 2).map((s, i) => (
+                        <span key={i} className="text-[10px] font-mono bg-zinc-800 text-zinc-300 px-2 py-1">
+                          <span className="text-orange-400 font-bold">{s.value}</span> {s.label}
+                        </span>
+                      ))}
+                    </div>
+                    {isExp && (
+                      <div className="mt-4 space-y-3 border-t border-zinc-700 pt-4">
+                        {conflict.stats.map((s, i) => (
+                          <div key={i} className="flex justify-between text-xs">
+                            <span className="text-zinc-500">{s.label}</span>
+                            <span className="text-orange-400 font-bold font-mono">{s.value}</span>
+                          </div>
+                        ))}
+                        {conflict.arms && (
+                          <div className="border-t border-zinc-800 pt-3">
+                            <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider mb-1">
+                              {locale === "sv" ? "Vapenhandel" : "Arms trade"}
+                            </p>
+                            <p className="text-xs text-zinc-400 leading-relaxed">{conflict.arms}</p>
+                          </div>
+                        )}
+                        {conflict.sources?.length > 0 && (
+                          <p className="text-[9px] font-mono text-zinc-700">
+                            [{locale === "sv" ? "Källa" : "Source"}: {conflict.sources.join(", ")}]
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="border-t border-zinc-800/60 px-8 md:px-14 py-4 text-center">
         <p className="text-[10px] text-zinc-700 font-mono">{ui.footer}</p>
