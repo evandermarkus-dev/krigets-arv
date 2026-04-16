@@ -15,7 +15,7 @@ export default async function HomePage({
 
       {/* Background photo – refugees/conflict, grayscale, visible */}
       <div className="absolute inset-0 z-0" style={{
-        backgroundImage: `url('https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=1600&q=80')`,
+        backgroundImage: `url('/hero.jpg')`,
         backgroundSize: "cover",
         backgroundPosition: "center 40%",
         filter: "grayscale(100%) brightness(0.65)",
