@@ -68,9 +68,13 @@ export async function GET(req: NextRequest) {
     }
 
     console.log(`[conflicts] ${merged.length} konflikter (${baseConflicts.length} hårdkodade + ${merged.length - baseConflicts.length} dynamiska)`);
-    return Response.json(merged);
+    return Response.json(merged, {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" },
+    });
   } catch {
-    return Response.json(baseConflicts);
+    return Response.json(baseConflicts, {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" },
+    });
   }
 }
 

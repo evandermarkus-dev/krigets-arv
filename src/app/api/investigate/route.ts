@@ -2,10 +2,11 @@ import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 const anthropicProvider = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
-import { investigateRatelimit } from "@/lib/ratelimit";
+import { investigateRatelimit, buildRatelimitKey } from "@/lib/ratelimit";
 import { ragMiddleware } from "@/lib/rag-middleware";
 import { getInvestigateSystemPrompt } from "@/config/prompts";
 import { supabase } from "@/lib/supabase";
+import { buildCacheKey, getCachedResponse, setCachedResponse } from "@/lib/response-cache";
 
 async function getLiveConflictContext(locale: string): Promise<string> {
   try {
@@ -44,8 +45,9 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const ua = req.headers.get("user-agent") ?? "";
   if (investigateRatelimit) {
-    const { success } = await investigateRatelimit.limit(ip);
+    const { success } = await investigateRatelimit.limit(buildRatelimitKey(ip, ua));
     if (!success) {
       return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
     }
@@ -54,6 +56,28 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, mode, locale } = await req.json();
     if (!messages?.length) return NextResponse.json({ error: "Meddelanden saknas" }, { status: 400 });
+
+    // Extrahera senaste användarfrågan för cache-nyckel
+    const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
+    const lastText = typeof lastUserMsg?.content === "string"
+      ? lastUserMsg.content
+      : (lastUserMsg?.content as Array<{ type: string; text?: string }>)?.find((p) => p.type === "text")?.text ?? "";
+
+    const cacheKey = buildCacheKey(lastText, mode ?? "compact", locale ?? "sv");
+    const cached = await getCachedResponse(cacheKey);
+
+    if (cached) {
+      // Returnera cachat svar i AI SDK:s data-stream-protokoll
+      const body = `0:${JSON.stringify(cached)}\n`;
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Vercel-AI-Data-Stream": "v1",
+          "x-from-cache": "true",
+        },
+      });
+    }
 
     const [systemPrompt, liveContext] = await Promise.all([
       Promise.resolve(getInvestigateSystemPrompt(mode, locale)),
@@ -66,6 +90,9 @@ export async function POST(req: NextRequest) {
       system: systemPrompt + liveContext,
       messages: modelMessages,
       maxOutputTokens: mode === "compact" ? 300 : 1024,
+      onFinish: async ({ text }) => {
+        if (text) await setCachedResponse(cacheKey, text);
+      },
     });
 
     return result.toUIMessageStreamResponse();
