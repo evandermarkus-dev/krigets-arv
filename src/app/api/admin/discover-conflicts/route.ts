@@ -3,7 +3,7 @@ import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { supabase } from "@/lib/supabase";
 import { updateConflict } from "@/lib/conflict-updater";
-import { CONFLICTS_SV } from "@/data/conflicts";
+import { CONFLICTS_SV, CONFLICTS_EN } from "@/data/conflicts";
 
 const anthropicProvider = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 
@@ -69,24 +69,39 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        // Steg 1: Hämta befintliga konflikt-ID:n (hårdkodade + databas)
+        // Steg 1: Hämta befintliga konflikt-ID:n och namn (hårdkodade + databas)
         const hardcodedIds = CONFLICTS_SV.map((c) => c.id);
+        const hardcodedEnNames = CONFLICTS_EN.map((c) => c.name);
+
         const { data: metaRows } = await supabase
           .from("conflict_meta")
-          .select("id");
+          .select("id, name_en");
+
         const existingIds = new Set([
           ...hardcodedIds,
           ...(metaRows ?? []).map((r) => r.id),
         ]);
 
+        // Bygg en läsbar lista med alla befintliga konflikter (namn) för Claude
+        const existingNames = [
+          ...hardcodedEnNames,
+          ...(metaRows ?? []).map((r) => r.name_en).filter(Boolean),
+        ];
+        const existingList = existingNames.map((n, i) => `${i + 1}. ${n}`).join("\n");
+
         send({ type: "scanning", existingCount: existingIds.size });
 
-        // Steg 2: Fråga Claude om aktuella konflikter
+        // Steg 2: Fråga Claude om aktuella konflikter — med lista på vad som redan finns
         const { text } = await generateText({
           model: anthropicProvider("claude-sonnet-4-6"),
           maxOutputTokens: 2048,
           system: DISCOVER_SYSTEM_PROMPT,
-          prompt: `Lista de 15 mest allvarliga pågående väpnade konflikterna i världen ${new Date().getFullYear()}. Fokusera på konflikter som påverkar barn och civila.`,
+          prompt: `Lista de 15 mest allvarliga pågående väpnade konflikterna i världen ${new Date().getFullYear()}. Fokusera på konflikter som påverkar barn och civila.
+
+VIKTIGT: Dessa konflikter finns REDAN i systemet och ska INTE inkluderas (varken med samma eller liknande namn/region):
+${existingList}
+
+Inkludera ENBART konflikter som inte täcks av listan ovan.`,
         });
 
         // Steg 3: Parsa JSON och filtrera bort redan kända konflikter
