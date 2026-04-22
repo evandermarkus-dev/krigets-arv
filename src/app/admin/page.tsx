@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CONFLICTS_SV } from "@/data/conflicts";
 
@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [statuses, setStatuses] = useState<ConflictStatus[]>(
     CONFLICTS_SV.map((c) => ({ id: c.id, name: c.name, state: "idle" }))
   );
+  const [loadingConflicts, setLoadingConflicts] = useState(true);
   const [log, setLog] = useState<string[]>([]);
   const [authError, setAuthError] = useState(false);
   const [discovering, setDiscovering] = useState(false);
@@ -40,6 +41,19 @@ export default function AdminPage() {
   const [newConflict, setNewConflict] = useState(EMPTY_NEW);
   const [addStatus, setAddStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [addError, setAddError] = useState("");
+
+  // Hämta alla konflikter (hårdkodade + Supabase) vid sidladdning
+  useEffect(() => {
+    fetch("/api/conflicts?locale=sv")
+      .then((r) => r.json())
+      .then((data: Array<{ id: string; name: string }>) => {
+        if (Array.isArray(data)) {
+          setStatuses(data.map((c) => ({ id: c.id, name: c.name, state: "idle" })));
+        }
+      })
+      .catch(() => { /* behåll hårdkodad lista */ })
+      .finally(() => setLoadingConflicts(false));
+  }, []);
 
   function appendLog(msg: string) {
     setLog((prev) => [...prev, msg]);
@@ -59,7 +73,7 @@ export default function AdminPage() {
     if (conflictId) {
       updateStatus({ id: conflictId, state: "running", sv: undefined, en: undefined });
     } else {
-      setStatuses(CONFLICTS_SV.map((c) => ({ id: c.id, name: c.name, state: "running" })));
+      setStatuses((prev) => prev.map((s) => ({ ...s, state: "running", sv: undefined, en: undefined })));
     }
 
     try {
@@ -74,7 +88,7 @@ export default function AdminPage() {
 
       if (res.status === 401) {
         setAuthError(true);
-        setStatuses(CONFLICTS_SV.map((c) => ({ id: c.id, name: c.name, state: "idle" })));
+        setStatuses((prev) => prev.map((s) => ({ ...s, state: "idle" })));
         setRunning(false);
         return;
       }
@@ -299,7 +313,12 @@ export default function AdminPage() {
 
         {/* Per-conflict status */}
         <section className="space-y-3">
-          <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Konflikter</h2>
+          <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">
+            Konflikter {!loadingConflicts && <span className="text-zinc-600">({statuses.length})</span>}
+          </h2>
+          {loadingConflicts && (
+            <p className="text-[11px] text-zinc-600 animate-pulse">Hämtar konflikter från databasen…</p>
+          )}
           <div className="divide-y divide-zinc-800/60 border border-zinc-800">
             {statuses.map((s) => (
               <div key={s.id} className="flex items-center justify-between px-4 py-3">
