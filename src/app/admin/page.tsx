@@ -17,6 +17,14 @@ type NdjsonEvent =
   | { type: "done"; conflictId: string; sv: { success: boolean; error?: string }; en: { success: boolean; error?: string } }
   | { type: "complete"; total: number };
 
+type DiscoverEvent =
+  | { type: "scanning"; existingCount: number }
+  | { type: "found"; total: number; newCount: number }
+  | { type: "adding"; conflictId: string; name: string }
+  | { type: "done"; conflictId: string; name: string; sv: { success: boolean; error?: string }; en: { success: boolean; error?: string } }
+  | { type: "complete"; added: number; message?: string }
+  | { type: "error"; conflictId?: string; message: string };
+
 const EMPTY_NEW = { id: "", name_sv: "", name_en: "", lat: "", lng: "", severity: "critical" as "critical" | "high", query_sv: "", query_en: "" };
 
 export default function AdminPage() {
@@ -27,6 +35,8 @@ export default function AdminPage() {
   );
   const [log, setLog] = useState<string[]>([]);
   const [authError, setAuthError] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverLog, setDiscoverLog] = useState<string[]>([]);
   const [newConflict, setNewConflict] = useState(EMPTY_NEW);
   const [addStatus, setAddStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [addError, setAddError] = useState("");
@@ -153,6 +163,85 @@ export default function AdminPage() {
     }
   }
 
+  async function runDiscover() {
+    setDiscovering(true);
+    setDiscoverLog([]);
+
+    const appendDiscover = (msg: string) => setDiscoverLog((prev) => [...prev, msg]);
+
+    try {
+      const res = await fetch("/api/admin/discover-conflicts", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${password.trim()}` },
+      });
+
+      if (res.status === 401) {
+        setAuthError(true);
+        setDiscovering(false);
+        return;
+      }
+
+      if (!res.body) throw new Error("Inget svar från API");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line) as DiscoverEvent;
+
+            if (event.type === "scanning") {
+              appendDiscover(`🔍 Skannar — ${event.existingCount} befintliga konflikter i appen`);
+            } else if (event.type === "found") {
+              appendDiscover(
+                event.newCount === 0
+                  ? `✓ Inga nya konflikter hittades (${event.total} analyserades)`
+                  : `✓ ${event.newCount} nya konflikter hittades av ${event.total} analyserade`
+              );
+            } else if (event.type === "adding") {
+              appendDiscover(`▶ Lägger till: ${event.name} (${event.conflictId})`);
+            } else if (event.type === "done") {
+              const ok = event.sv.success && event.en.success;
+              appendDiscover(
+                ok
+                  ? `✓ ${event.name} — statistik hämtad (SV + EN)`
+                  : `✗ ${event.name} — ${!event.sv.success ? `SV: ${event.sv.error} ` : ""}${!event.en.success ? `EN: ${event.en.error}` : ""}`
+              );
+              // Lägg till i konfliktstatus-listan
+              setStatuses((prev) => {
+                if (prev.some((s) => s.id === event.conflictId)) return prev;
+                return [...prev, { id: event.conflictId, name: event.name, state: ok ? "done" : "error" }];
+              });
+            } else if (event.type === "complete") {
+              appendDiscover(
+                event.added === 0
+                  ? `✓ Klart — inga nya konflikter att lägga till`
+                  : `✓ Klart — ${event.added} nya konflikter tillagda och klara`
+              );
+            } else if (event.type === "error") {
+              appendDiscover(`✗ Fel: ${event.message}`);
+            }
+          } catch {
+            // Ignorera ogiltiga JSON-rader
+          }
+        }
+      }
+    } catch (err) {
+      setDiscoverLog((prev) => [...prev, `Fel: ${err instanceof Error ? err.message : String(err)}`]);
+    }
+
+    setDiscovering(false);
+  }
+
   const canAdd = newConflict.id && newConflict.name_sv && newConflict.name_en &&
     newConflict.lat && newConflict.lng && password && addStatus !== "saving";
 
@@ -191,11 +280,21 @@ export default function AdminPage() {
           <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Uppdatera konfliktdata</h2>
           <button
             onClick={() => runUpdate()}
-            disabled={running || !password}
+            disabled={running || discovering || !password}
             className="w-full py-3 text-xs font-bold tracking-[0.15em] uppercase bg-red-800 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white transition-colors"
           >
             {running ? "Uppdaterar…" : "Uppdatera alla konflikter (SV + EN)"}
           </button>
+          <button
+            onClick={runDiscover}
+            disabled={running || discovering || !password}
+            className="w-full py-3 text-xs font-bold tracking-[0.15em] uppercase bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-white transition-colors"
+          >
+            {discovering ? "Söker efter nya konflikter…" : "🔍 Sök efter nya konflikter automatiskt"}
+          </button>
+          <p className="text-[11px] text-zinc-600">
+            Låter Claude identifiera pågående konflikter 2025–2026 som saknas i appen och lägger till dem automatiskt.
+          </p>
         </section>
 
         {/* Per-conflict status */}
@@ -270,13 +369,27 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Live log */}
+        {/* Live log — uppdatering */}
         {log.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Logg</h2>
+            <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Logg — uppdatering</h2>
             <div className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-1 max-h-64 overflow-y-auto">
               {log.map((line, i) => (
                 <p key={i} className={`text-[11px] leading-relaxed ${line.startsWith("✓") ? "text-green-400" : line.startsWith("✗") || line.startsWith("Fel") ? "text-red-400" : "text-zinc-400"}`}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Live log — discovery */}
+        {discoverLog.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-[11px] tracking-[0.25em] text-zinc-500 uppercase">Logg — nya konflikter</h2>
+            <div className="bg-zinc-900/60 border border-zinc-800 p-4 space-y-1 max-h-64 overflow-y-auto">
+              {discoverLog.map((line, i) => (
+                <p key={i} className={`text-[11px] leading-relaxed ${line.startsWith("✓") ? "text-green-400" : line.startsWith("✗") || line.startsWith("Fel") ? "text-red-400" : line.startsWith("🔍") || line.startsWith("▶") ? "text-zinc-300" : "text-zinc-400"}`}>
                   {line}
                 </p>
               ))}
