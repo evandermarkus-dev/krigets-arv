@@ -33,6 +33,9 @@ const QUERY_TRANSLATIONS: [RegExp, string][] = [
   [/Somalia/i, "Somalia conflict"],
   [/Sahel|Mali|Burkina/i, "Sahel Mali Burkina Faso conflict"],
   [/Libanon/i, "Lebanon conflict"],
+  [/Iran/i, "Iran Israel conflict Middle East"],
+  [/Houthi|Houthierna/i, "Houthi Yemen Red Sea"],
+  [/Hizballah|Hizbollah/i, "Hezbollah Lebanon conflict"],
 ];
 
 function buildSearchQuery(messages: unknown[]): string {

@@ -42,11 +42,22 @@ VAPENHANDEL OCH MILITÄRUTGIFTER:
 - Den globala konfliktkostnaden: $19 biljoner [Visual Capitalist/Vision of Humanity]
 - Trump föreslår $1,5 biljoner i försvarsbudget 2027 [PBS]
 
+IRAN OCH MELLANÖSTERN 2024–2026:
+- Iran avfyrade ca 300 missiler och drönare mot Israel i april 2024 – direkt militärt angrepp, första i historien [BBC/FN]
+- Iran avfyrade ca 180 ballistiska missiler mot Israel i oktober 2024 [Reuters]
+- Israels svar: luftangrepp mot iranska militäranläggningar och luftförsvarssystem 2024–2025 [AP]
+- Den regionala eskalationen i Mellanöstern 2024–2026 hotar civila i Iran, Israel, Libanon och Gaza
+- Irans stöd till Hizballah, Hamas och Houthierna kopplas av FN till vapenleveranser som når konfliktområden där barn drabbas
+- Houthiernas attacker mot rödahavssjöfart 2024–2025 försvårar humanitär varuförsörjning till Jemen [FN/OCHA]
+- Libanon: minst 1 200 000 fördrivna civila efter Israels militäroffensiv hösten 2024 [UNHCR]
+
 HUMANITÄR KRIS:
 - ICRC:s humanitära appell 2026: rekordbehov globalt
 - Antal saknade registrerade av Röda Korset ökade +70% på fem år [ICRC]
 - Gaza: massförstörelse av bostäder, skolor, sjukhus – "domicide" [FN rapport feb 2026]
 - Sudan al-Fasher: familjer flyr systematiskt våld [ICRC]
+- Globalt antal konfliktdrivna fördrivna: 117 miljoner människor 2025 – rekordnivå [UNHCR]
+- Sahel-regionen (Mali, Niger, Burkina Faso): 10+ miljoner fördrivna, barn används som barnsoldater av jihadistgrupper [FN 2025]
 
 REGLER:
 1. Svara ALLTID med källhänvisningar: [Källa: organisationsnamn/rapport]
