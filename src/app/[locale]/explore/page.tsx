@@ -125,7 +125,7 @@ export default function ExplorePage() {
             {...viewState}
             onMove={(evt) => setViewState(evt.viewState)}
             mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-            mapStyle="mapbox://styles/mapbox/dark-v11"
+            mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
             style={{ width: "100%", height: "100%" }}
           >
             <NavigationControl position="bottom-right" />
