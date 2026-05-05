@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/firecrawl/tigray-ethiopia",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/firecrawl/haiti-gang-violence",
+      "schedule": "0 8 * * 3"
+    },
+    {
+      "path": "/api/firecrawl/mozambique-cabo",
+      "schedule": "0 8 * * 5"
+    }
+  ]
+}
