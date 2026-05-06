@@ -4,6 +4,8 @@ const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
 import { perspectivesRatelimit, buildRatelimitKey } from "@/lib/ratelimit";
 import { MONOLOGUE_TRIGGERS } from "@/config/prompts";
+import { buildCacheKey, getCachedResponse, setCachedResponse } from "@/lib/response-cache";
+import { log } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -19,6 +21,31 @@ export async function POST(req: NextRequest) {
 
   try {
     const { messages, systemPrompt, locale } = await req.json();
+
+    // Cache key based on last message content + locale
+    const lastMsg = messages?.at(-1);
+    const lastText =
+      typeof lastMsg?.content === "string"
+        ? lastMsg.content
+        : (lastMsg?.content as Array<{ type: string; text?: string }>)?.find(
+            (p) => p.type === "text",
+          )?.text ?? "";
+
+    const cacheKey = buildCacheKey(lastText, "perspectives", locale ?? "sv");
+    const cached = await getCachedResponse(cacheKey);
+
+    if (cached) {
+      log("info", { route: "perspectives", cache_hit: true });
+      const body = `0:${JSON.stringify(cached)}\n`;
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Vercel-AI-Data-Stream": "v1",
+          "x-from-cache": "true",
+        },
+      });
+    }
 
     const monologueTrigger = MONOLOGUE_TRIGGERS[locale] ?? MONOLOGUE_TRIGGERS.sv;
 
@@ -36,11 +63,14 @@ export async function POST(req: NextRequest) {
       system: systemPrompt,
       messages: modelMessages,
       maxOutputTokens: 512,
+      onFinish: async ({ text }) => {
+        if (text) await setCachedResponse(cacheKey, text, 1800);
+      },
     });
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("Perspectives API error:", error);
+    log("error", { route: "perspectives", error: String(error) });
     return NextResponse.json({ error: "Något gick fel." }, { status: 500 });
   }
 }

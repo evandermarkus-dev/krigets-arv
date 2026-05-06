@@ -7,6 +7,7 @@ import { ragMiddleware } from "@/lib/rag-middleware";
 import { getInvestigateSystemPrompt } from "@/config/prompts";
 import { supabase } from "@/lib/supabase";
 import { buildCacheKey, getCachedResponse, setCachedResponse } from "@/lib/response-cache";
+import { log } from "@/lib/logger";
 
 async function getLiveConflictContext(locale: string): Promise<string> {
   try {
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
     const cached = await getCachedResponse(cacheKey);
 
     if (cached) {
+      log("info", { route: "investigate", cache_hit: true });
       // Returnera cachat svar i AI SDK:s data-stream-protokoll
       const body = `0:${JSON.stringify(cached)}\n`;
       return new Response(body, {
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const ragStart = Date.now()
     const [systemPrompt, liveContext] = await Promise.all([
       Promise.resolve(getInvestigateSystemPrompt(mode, locale)),
       getLiveConflictContext(locale),
@@ -91,13 +94,15 @@ export async function POST(req: NextRequest) {
       messages: modelMessages,
       maxOutputTokens: mode === "compact" ? 300 : 1024,
       onFinish: async ({ text }) => {
+        // RAG source is resolved inside the middleware; log latency from request start
+        log("info", { route: "investigate", rag_source: "middleware", latency_ms: Date.now() - ragStart })
         if (text) await setCachedResponse(cacheKey, text);
       },
     });
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("Investigate API error:", error);
+    log("error", { route: "investigate", error: String(error) });
     return NextResponse.json({ error: "Något gick fel. Försök igen." }, { status: 500 });
   }
 }

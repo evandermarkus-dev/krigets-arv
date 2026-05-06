@@ -2,6 +2,9 @@ import type { LanguageModelMiddleware } from "ai";
 import { searchSources, formatResultsAsContext } from "./firecrawl";
 import { embedText } from "./embeddings";
 import { supabase, type SearchResult } from "./supabase";
+import { withBreaker } from "./circuit-breaker";
+
+const RAG_DEADLINE_MS = 1200
 
 /**
  * Nyckelord som alltid läggs till sökkfrågan för att styra Firecrawl
@@ -72,20 +75,16 @@ function buildSearchQuery(messages: unknown[]): string {
 async function vectorSearch(query: string, limit = 4): Promise<SearchResult[]> {
   if (!process.env.OPENAI_API_KEY) return [];
 
-  try {
-    const embedding = await embedText(query);
+  const embedding = await embedText(query);
 
-    const { data, error } = await supabase.rpc("search_chunks", {
-      query_embedding: embedding,
-      match_threshold: 0.5,
-      match_count: limit,
-    });
+  const { data, error } = await supabase.rpc("search_chunks", {
+    query_embedding: embedding,
+    match_threshold: 0.5,
+    match_count: limit,
+  });
 
-    if (error || !data?.length) return [];
-    return data as SearchResult[];
-  } catch {
-    return [];
-  }
+  if (error || !data?.length) return [];
+  return data as SearchResult[];
 }
 
 /**
@@ -102,6 +101,42 @@ function formatVectorResults(results: SearchResult[]): string {
   return `\n\n---\nINDEXERADE KÄLLDOKUMENT (hämtade ur vektordatabas):\n\n${blocks.join("\n\n---\n\n")}\n\nAnvänd dessa källor i ditt svar och citera dem med [Källa: <titel>, <url>].`;
 }
 
+/** Export for logging in the API route */
+export type RagSource = "pgvector" | "firecrawl" | "none"
+
+/**
+ * Runs the full two-step RAG pipeline (pgvector → Firecrawl fallback).
+ * Both steps are wrapped with circuit breakers.
+ * Returns the context string and which source won.
+ */
+async function runRagPipeline(
+  query: string,
+): Promise<{ context: string; source: RagSource }> {
+  // Steg 1: pgvector med circuit breaker
+  const vectorResults = await withBreaker(
+    "pgvector",
+    () => vectorSearch(query, 4),
+    [] as SearchResult[],
+  )
+
+  let context = formatVectorResults(vectorResults)
+  let source: RagSource = vectorResults.length >= 2 ? "pgvector" : "none"
+
+  // Steg 2: Firecrawl fallback om < 2 vektorträffar
+  if (vectorResults.length < 2) {
+    const firecrawlResults = await withBreaker(
+      "firecrawl",
+      () => searchSources(query, 3),
+      [],
+    )
+    const firecrawlContext = formatResultsAsContext(firecrawlResults)
+    context = context + firecrawlContext
+    if (firecrawlResults.length > 0) source = "firecrawl"
+  }
+
+  return { context, source }
+}
+
 /**
  * AI SDK Language Model Middleware — injicerar relevant källkontext
  * i systemprompten innan varje Claude-anrop.
@@ -109,6 +144,9 @@ function formatVectorResults(results: SearchResult[]): string {
  * Sökstrategi i två steg:
  *   1. pgvector (Supabase) — snabb, offline-indexerad, hög precision
  *   2. Firecrawl live-sökning — fallback om < 2 vektorträffar (eller tom DB)
+ *
+ * Hela pipeline:n körs mot ett 1200 ms tak — om timeout vinner streamas
+ * Claude med enbart basprompt (inga externa källor injiceras).
  */
 export const ragMiddleware: LanguageModelMiddleware = {
   specificationVersion: "v3",
@@ -116,25 +154,14 @@ export const ragMiddleware: LanguageModelMiddleware = {
     const query = buildSearchQuery(params.prompt);
     if (!query) return params;
 
-    // Steg 1: pgvector
-    const vectorResults = await Promise.race([
-      vectorSearch(query, 4),
-      new Promise<[]>((resolve) => setTimeout(() => resolve([]), 3000)),
-    ]);
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), RAG_DEADLINE_MS))
 
-    let context = formatVectorResults(vectorResults);
+    const ragResult = await Promise.race([runRagPipeline(query), timeout])
 
-    // Steg 2: Firecrawl fallback om < 2 vektorträffar
-    if (vectorResults.length < 2) {
-      const firecrawlResults = await Promise.race([
-        searchSources(query, 3),
-        new Promise<[]>((resolve) => setTimeout(() => resolve([]), 4000)),
-      ]);
-      const firecrawlContext = formatResultsAsContext(firecrawlResults);
-      context = context + firecrawlContext;
-    }
+    // Timeout won — stream with base prompt only
+    if (ragResult === null || !ragResult.context) return params
 
-    if (!context) return params;
+    const { context } = ragResult
 
     // Injicera i befintligt system-meddelande (eller skapa nytt)
     const existingSystemIdx = params.prompt.findIndex((m) => m.role === "system");
