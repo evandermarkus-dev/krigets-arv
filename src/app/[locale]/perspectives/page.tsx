@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
+import { isToolUIPart } from "ai";
 import { DefaultChatTransport } from "ai";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { getRoleSystemPrompt } from "@/config/prompts";
@@ -174,9 +175,12 @@ function PerspectiveChat({ role, ui, locale }: { role: Role; ui: typeof UI.sv; l
                 msg.role === "user" ? "bg-zinc-800 text-zinc-100" : `bg-zinc-900/60 border ${role.activeColor} text-zinc-200`
               }`}>
                 {msg.role === "assistant" ? (
-                  msg.parts.map((part, i) =>
-                    part.type === "text" ? <MessageResponse key={i}>{part.text}</MessageResponse> : null
-                  )
+                  msg.parts.map((part, i) => {
+                    if (part.type === "text") return <MessageResponse key={i}>{part.text}</MessageResponse>;
+                    if (isToolUIPart(part) && part.state === "input-streaming")
+                      return <span key={i} className="block text-[10px] text-zinc-600 italic mt-1">🔍 Hämtar källa…</span>;
+                    return null;
+                  })
                 ) : (
                   msg.parts.map((part, i) =>
                     part.type === "text" ? <span key={i}>{part.text}</span> : null

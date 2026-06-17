@@ -20,7 +20,7 @@ src/
 │   │   ├── page.tsx               # Hemsida med hero + navigation
 │   │   ├── explore/page.tsx       # Interaktiv Mapbox-karta (6 konfliktzoner)
 │   │   ├── investigate/page.tsx   # AI-chatbot för forskning
-│   │   ├── perspectives/page.tsx  # Rollspel: 3 karaktärer
+│   │   ├── perspectives/page.tsx  # Rollspel: 6 karaktärer
 │   │   └── factbank/page.tsx      # Faktabank med 15 verifierade fakta
 │   ├── layout.tsx                 # Root layout (passthrough)
 │   └── page.tsx                   # Root redirect → /sv
@@ -40,7 +40,7 @@ src/
 |---|---|---|
 | Explore | `/[locale]/explore` | Mapbox-karta med 6 konfliktzoner, klickbara markörer med statistik |
 | Investigate | `/[locale]/investigate` | Claude AI-chatbot, 2 lägen (kompakt/utförligt), konversationshistorik |
-| Perspectives | `/[locale]/perspectives` | Rollspel med 3 karaktärer: barn i Gaza, FN-diplomat, vapenlobbyist |
+| Perspectives | `/[locale]/perspectives` | Rollspel med 6 karaktärer: Nour (barn i Gaza), FN-diplomat, vapenlobbyist, fältläkare (MSF), Adama (f.d. barnsoldат), lärare i Ukraina |
 | Factbank | `/[locale]/factbank` | 15 expanderbara faktakort med källattribution, filtrerbart |
 
 ---
