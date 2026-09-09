@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { perspectivesRatelimit, checkRatelimit } from "@/lib/ratelimit";
 import { MONOLOGUE_TRIGGERS } from "@/config/prompts";
-import { buildCacheKey, getCachedResponse, setCachedResponse } from "@/lib/response-cache";
+import { buildCacheKey, getCachedResponse, setCachedResponse, cachedTextStreamResponse } from "@/lib/response-cache";
 import { log } from "@/lib/logger";
 import { embedText } from "@/lib/embeddings";
 import { supabase, type SearchResult } from "@/lib/supabase";
@@ -74,15 +74,7 @@ export async function POST(req: NextRequest) {
 
     if (cached) {
       log("info", { route: "perspectives", cache_hit: true });
-      const body = `0:${JSON.stringify(cached)}\n`;
-      return new Response(body, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "X-Vercel-AI-Data-Stream": "v1",
-          "x-from-cache": "true",
-        },
-      });
+      return cachedTextStreamResponse(cached);
     }
 
     const monologueTrigger = MONOLOGUE_TRIGGERS[locale] ?? MONOLOGUE_TRIGGERS.sv;

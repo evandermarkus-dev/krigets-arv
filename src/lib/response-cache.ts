@@ -37,3 +37,32 @@ export async function setCachedResponse(key: string, text: string, ttl = DEFAULT
     // Cache-fel ska aldrig blockera svar
   }
 }
+
+/**
+ * Returnerar ett cachat svar i AI SDK:s UI Message Stream-protokoll (SSE,
+ * x-vercel-ai-ui-message-stream: v1) — samma protokoll som
+ * result.toUIMessageStreamResponse() producerar. useChat känner inte igen
+ * det äldre data-stream-formatet ("0:...\n"), så ett svar i fel format
+ * renderas aldrig i klienten trots en lyckad 200 OK.
+ */
+export function cachedTextStreamResponse(text: string): Response {
+  const chunks = [
+    { type: "text-start", id: "0" },
+    { type: "text-delta", id: "0", delta: text },
+    { type: "text-end", id: "0" },
+  ];
+  const body =
+    chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join("") + "data: [DONE]\n\n";
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache",
+      "connection": "keep-alive",
+      "x-vercel-ai-ui-message-stream": "v1",
+      "x-accel-buffering": "no",
+      "x-from-cache": "true",
+    },
+  });
+}

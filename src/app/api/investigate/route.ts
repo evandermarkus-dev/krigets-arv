@@ -6,7 +6,7 @@ import { investigateRatelimit, checkRatelimit } from "@/lib/ratelimit";
 import { ragMiddleware } from "@/lib/rag-middleware";
 import { getInvestigateSystemPrompt } from "@/config/prompts";
 import { supabase } from "@/lib/supabase";
-import { buildCacheKey, getCachedResponse, setCachedResponse } from "@/lib/response-cache";
+import { buildCacheKey, getCachedResponse, setCachedResponse, cachedTextStreamResponse } from "@/lib/response-cache";
 import { log } from "@/lib/logger";
 
 async function getLiveConflictContext(locale: string): Promise<string> {
@@ -66,16 +66,7 @@ export async function POST(req: NextRequest) {
 
     if (cached) {
       log("info", { route: "investigate", cache_hit: true });
-      // Returnera cachat svar i AI SDK:s data-stream-protokoll
-      const body = `0:${JSON.stringify(cached)}\n`;
-      return new Response(body, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "X-Vercel-AI-Data-Stream": "v1",
-          "x-from-cache": "true",
-        },
-      });
+      return cachedTextStreamResponse(cached);
     }
 
     const ragStart = Date.now()
