@@ -69,7 +69,10 @@ export async function POST(req: NextRequest) {
             (p) => p.type === "text",
           )?.text ?? "";
 
-    const cacheKey = buildCacheKey(lastText, "perspectives", locale ?? "sv");
+    // Inkludera systemPrompt i nyckeln — annars delar alla karaktärer samma
+    // cache-plats för öppningsmeddelandet (identiskt "START_MONOLOGUE" innan
+    // det ersätts med den lokaliserade triggerfrasen).
+    const cacheKey = buildCacheKey(`${systemPrompt}::${lastText}`, "perspectives", locale ?? "sv");
     const cached = await getCachedResponse(cacheKey);
 
     if (cached) {
