@@ -3,7 +3,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { perspectivesRatelimit, buildRatelimitKey } from "@/lib/ratelimit";
+import { perspectivesRatelimit, checkRatelimit } from "@/lib/ratelimit";
 import { MONOLOGUE_TRIGGERS } from "@/config/prompts";
 import { buildCacheKey, getCachedResponse, setCachedResponse } from "@/lib/response-cache";
 import { log } from "@/lib/logger";
@@ -53,11 +53,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
   const ua = req.headers.get("user-agent") ?? "";
-  if (perspectivesRatelimit) {
-    const { success } = await perspectivesRatelimit.limit(buildRatelimitKey(ip, ua));
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
-    }
+  if (!(await checkRatelimit(perspectivesRatelimit, ip, ua))) {
+    return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
   }
 
   try {

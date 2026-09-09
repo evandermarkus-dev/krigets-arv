@@ -2,7 +2,7 @@ import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 const anthropicProvider = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
-import { investigateRatelimit, buildRatelimitKey } from "@/lib/ratelimit";
+import { investigateRatelimit, checkRatelimit } from "@/lib/ratelimit";
 import { ragMiddleware } from "@/lib/rag-middleware";
 import { getInvestigateSystemPrompt } from "@/config/prompts";
 import { supabase } from "@/lib/supabase";
@@ -47,11 +47,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
   const ua = req.headers.get("user-agent") ?? "";
-  if (investigateRatelimit) {
-    const { success } = await investigateRatelimit.limit(buildRatelimitKey(ip, ua));
-    if (!success) {
-      return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
-    }
+  if (!(await checkRatelimit(investigateRatelimit, ip, ua))) {
+    return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
   }
 
   try {

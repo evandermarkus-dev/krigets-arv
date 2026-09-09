@@ -30,6 +30,25 @@ export function buildRatelimitKey(ip: string, userAgent: string): string {
     .slice(0, 20);
 }
 
+/**
+ * Kollar en rate limiter men failar öppet (tillåter requesten) om limitern
+ * själv kastar — t.ex. att Redis är onåbart. En trasig Redis-uppkoppling ska
+ * aldrig blockera den faktiska funktionen.
+ */
+export async function checkRatelimit(
+  limiter: ReturnType<typeof createRatelimit>,
+  ip: string,
+  userAgent: string,
+): Promise<boolean> {
+  if (!limiter) return true;
+  try {
+    const { success } = await limiter.limit(buildRatelimitKey(ip, userAgent));
+    return success;
+  } catch {
+    return true;
+  }
+}
+
 // /api/investigate — 30 förfrågningar per composite-nyckel per minut
 export const investigateRatelimit = createRatelimit(30, "1 m");
 
