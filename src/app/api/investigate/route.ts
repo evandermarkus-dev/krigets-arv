@@ -8,6 +8,7 @@ import { getInvestigateSystemPrompt } from "@/config/prompts";
 import { supabase } from "@/lib/supabase";
 import { buildCacheKey, getCachedResponse, setCachedResponse, cachedTextStreamResponse } from "@/lib/response-cache";
 import { log } from "@/lib/logger";
+import { conversationCacheText } from "@/lib/ui-messages";
 
 async function getLiveConflictContext(locale: string): Promise<string> {
   try {
@@ -55,13 +56,9 @@ export async function POST(req: NextRequest) {
     const { messages, mode, locale } = await req.json();
     if (!messages?.length) return NextResponse.json({ error: "Meddelanden saknas" }, { status: 400 });
 
-    // Extrahera senaste användarfrågan för cache-nyckel
-    const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
-    const lastText = typeof lastUserMsg?.content === "string"
-      ? lastUserMsg.content
-      : (lastUserMsg?.content as Array<{ type: string; text?: string }>)?.find((p) => p.type === "text")?.text ?? "";
-
-    const cacheKey = buildCacheKey(lastText, mode ?? "compact", locale ?? "sv");
+    // Cache-nyckel på hela samtalet. AI SDK 6 skickar text i `parts`, inte `content` —
+    // tidigare blev nyckeln därför tom och alla frågor delade samma cachade svar.
+    const cacheKey = buildCacheKey(conversationCacheText(messages), mode ?? "compact", locale ?? "sv");
     const cached = await getCachedResponse(cacheKey);
 
     if (cached) {

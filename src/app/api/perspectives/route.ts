@@ -7,6 +7,7 @@ import { perspectivesRatelimit, checkRatelimit } from "@/lib/ratelimit";
 import { MONOLOGUE_TRIGGERS, ROLE_PROMPTS } from "@/config/prompts";
 import { buildCacheKey, getCachedResponse, setCachedResponse, cachedTextStreamResponse } from "@/lib/response-cache";
 import { log } from "@/lib/logger";
+import { conversationCacheText, messageText, withText } from "@/lib/ui-messages";
 import { embedText } from "@/lib/embeddings";
 import { supabase, type SearchResult } from "@/lib/supabase";
 import { searchSources, formatResultsAsContext } from "@/lib/firecrawl";
@@ -79,19 +80,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid messages." }, { status: 400 });
     }
 
-    // Cache key based on last message content + locale
-    const lastMsg = messages?.at(-1);
-    const lastText =
-      typeof lastMsg?.content === "string"
-        ? lastMsg.content
-        : (lastMsg?.content as Array<{ type: string; text?: string }>)?.find(
-            (p) => p.type === "text",
-          )?.text ?? "";
-
-    // Inkludera systemPrompt i nyckeln — annars delar alla karaktärer samma
-    // cache-plats för öppningsmeddelandet (identiskt "START_MONOLOGUE" innan
-    // det ersätts med den lokaliserade triggerfrasen).
-    const cacheKey = buildCacheKey(`${systemPrompt}::${lastText}`, "perspectives", locale);
+    // Cache-nyckel = karaktärens prompt + hela samtalet. AI SDK 6 skickar text i
+    // `parts`; den gamla `content`-läsningen gav tom text, så varje följdfråga
+    // fick tillbaka karaktärens första cachade svar.
+    const cacheKey = buildCacheKey(`${systemPrompt}::${conversationCacheText(messages)}`, "perspectives", locale);
     const cached = await getCachedResponse(cacheKey);
 
     if (cached) {
@@ -102,9 +94,9 @@ export async function POST(req: NextRequest) {
     const monologueTrigger = MONOLOGUE_TRIGGERS[locale];
 
     // Replace START_MONOLOGUE trigger with actual prompt in last message
-    const processedMessages = messages.map((m: { role: string; content: unknown }, i: number) =>
-      i === messages.length - 1 && m.content === "START_MONOLOGUE"
-        ? { ...m, content: monologueTrigger }
+    const processedMessages = messages.map((m: object, i: number) =>
+      i === messages.length - 1 && messageText(m) === "START_MONOLOGUE"
+        ? withText(m, monologueTrigger)
         : m
     );
 
