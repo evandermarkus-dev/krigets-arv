@@ -132,7 +132,7 @@ function PerspectiveChat({ role, ui, locale }: { role: Role; ui: typeof UI.sv; l
       didTriggerMonologue.current = true;
       sendMessage({ text: "START_MONOLOGUE" });
     }
-  }, []);
+  }, [sendMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -16,8 +16,6 @@ npm run lint
 npx tsc --noEmit  # typkontroll
 ```
 
-OBS: `package-lock.json` är osynkad med `package.json` (saknar `@swc/helpers`), så `npm ci` misslyckas. Använd `npm install` tills låsfilen är uppdaterad och committad.
-
 ---
 
 ## Katalogstruktur
@@ -58,8 +56,9 @@ src/
 │   ├── response-cache.ts             # Upstash-cache för AI-svar
 │   ├── ratelimit.ts                  # Upstash, IP + UA-hash
 │   ├── logger.ts                     # Strukturerad JSON-loggning
-│   ├── supabase.ts                   # Otypad service-role-klient (äldre kod)
-│   └── krigets/                      # Typat bibliotek: crawl-jobb, dokument, konflikter
+│   ├── supabase.ts                   # Re-exporterar typad klient + toVector() + radtyper
+│   ├── ui-messages.ts                # Text ur AI SDK 6-meddelanden (parts) + cache-nyckel
+│   └── krigets/                      # Typat bibliotek: klient, crawl-jobb, dokument, konflikter
 │       └── database.types.ts         # Genererade Supabase-typer
 └── i18n/                             # next-intl
 messages/{sv,en}.json                 # next-intl-översättningar (de som faktiskt laddas)
@@ -103,7 +102,7 @@ All skrivning sker server-side med service role. RLS tillåter enbart publik lä
 - `next-intl` v4, locales `sv` (default) och `en`, URL-baserat (`/sv/...`, `/en/...`)
 - `middleware.ts` exkluderar `api`, `admin` och statiska filer
 - Feature-sidorna har egna `UI = { sv, en }`-objekt i stället för `t("key")`
-- `src/i18n/request.ts` laddar `messages/` i roten. `src/messages/` är en dubblett som inte används.
+- `src/i18n/request.ts` laddar `messages/` i roten
 
 ## Miljövariabler
 
@@ -129,12 +128,10 @@ CRON_SECRET=                  # admin/cron-auth + adminpanelens lösenord
 - Data hör hemma i `src/data/`, systemprompter i `src/config/prompts.ts`, inte i routes eller klientkomponenter
 - Nya källdomäner läggs till i `src/config/sources.ts` med typ och prioritet
 - Externa beroenden (DB, Firecrawl, Redis) ska wrappas så att fel degraderar funktionen i stället för att ge 500
-- Ny DB-kod skrivs mot det typade `src/lib/krigets/`-biblioteket
+- Ny DB-kod skrivs mot det typade `src/lib/krigets/`-biblioteket. Skicka embeddings via `toVector()` (genererade typer säger `string` för pgvector)
+- Läs aldrig `message.content` i API-routes — AI SDK 6 skickar text i `parts`. Använd `messageText()` / `conversationCacheText()` från `lib/ui-messages.ts`
 
 ## Kända lösa trådar
 
 - Kunskapsdatabasen är i praktiken tom: `documents` innehåller bara 7 startsidor (seed, april 2026), inga är klassificerade, och `firecrawl_jobs` har 0 rader — cron-crawlarna har aldrig skrivit något. RAG faller därför nästan alltid tillbaka på Firecrawl-sökning.
 - Ange aldrig ett hårdkodat antal källdokument i UI eller prompt — räkna dynamiskt eller utelämna
-- Två Supabase-klienter (`lib/supabase.ts` och `lib/krigets/supabase.ts`) — konsolidera
-- `getRoleSystemPrompt` i `prompts.ts` används inte längre
-- Lint-varning i `perspectives/page.tsx`: `useEffect` saknar `sendMessage` i dependency-listan

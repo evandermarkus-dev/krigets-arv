@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import { CONFLICTS_SV, CONFLICTS_EN } from "@/data/conflicts";
 import type { Conflict } from "@/data/conflicts";
 
+type Stat = Conflict["stats"][number];
+
 /**
  * GET /api/conflicts?locale=sv
  *
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
       return {
         ...c,
         description: live.description ?? c.description,
-        stats: Array.isArray(live.stats) && live.stats.length > 0 ? live.stats : c.stats,
+        stats: Array.isArray(live.stats) && live.stats.length > 0 ? (live.stats as unknown as Stat[]) : c.stats,
         arms: live.arms ?? c.arms,
         sources: Array.isArray(live.sources) && live.sources.length > 0 ? live.sources : c.sources,
       };
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
         lng: meta.lng,
         severity: meta.severity as "critical" | "high",
         description: live?.description ?? "",
-        stats: Array.isArray(live?.stats) ? live.stats : [],
+        stats: Array.isArray(live?.stats) ? (live.stats as unknown as Stat[]) : [],
         arms: live?.arms ?? "",
         sources: Array.isArray(live?.sources) ? live.sources : [],
         investigateQuery: locale === "en" ? meta.query_en : meta.query_sv,

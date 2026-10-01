@@ -51,7 +51,7 @@ export default function FactbankPage() {
   // Återställ filter om locale byts
   useEffect(() => {
     setActiveCategory(ui.filter_all);
-  }, [locale]);
+  }, [ui.filter_all]);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [liveConflicts, setLiveConflicts] = useState<Conflict[]>([]);

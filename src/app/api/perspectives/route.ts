@@ -9,7 +9,7 @@ import { buildCacheKey, getCachedResponse, setCachedResponse, cachedTextStreamRe
 import { log } from "@/lib/logger";
 import { conversationCacheText, messageText, withText } from "@/lib/ui-messages";
 import { embedText } from "@/lib/embeddings";
-import { supabase, type SearchResult } from "@/lib/supabase";
+import { supabase, type SearchResult, toVector } from "@/lib/supabase";
 import { searchSources, formatResultsAsContext } from "@/lib/firecrawl";
 import { withBreaker } from "@/lib/circuit-breaker";
 
@@ -17,7 +17,7 @@ async function vectorSearch(query: string, limit = 3): Promise<SearchResult[]> {
   if (!process.env.OPENAI_API_KEY) return [];
   const embedding = await embedText(query);
   const { data, error } = await supabase.rpc("search_chunks", {
-    query_embedding: embedding,
+    query_embedding: toVector(embedding),
     match_threshold: 0.5,
     match_count: limit,
   });

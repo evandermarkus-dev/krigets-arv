@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { supabase } from "./supabase";
+import { supabase, toVector } from "./supabase";
 import { embedText } from "./embeddings";
 import { searchSources } from "./firecrawl";
 import type { SearchResult } from "./supabase";
@@ -29,7 +29,7 @@ async function searchForConflict(
   try {
     const embedding = await embedText(query);
     const { data, error } = await supabase.rpc("search_chunks", {
-      query_embedding: embedding,
+      query_embedding: toVector(embedding),
       match_threshold: 0.45,
       match_count: limit,
     });

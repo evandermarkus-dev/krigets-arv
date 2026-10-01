@@ -1,14 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+/** Service-role client — re-exported from the typed krigets/ library. */
+export { supabase } from "./krigets/supabase";
 
-const url = process.env.SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!url || !key) {
-  throw new Error("SUPABASE_URL och SUPABASE_SERVICE_ROLE_KEY måste vara satta");
+/**
+ * pgvector columns are typed as `string` in the generated Supabase types,
+ * but PostgREST accepts a JSON number array — which is what we send. This
+ * cast only satisfies the type checker; the request payload is unchanged.
+ */
+export function toVector(embedding: number[]): string {
+  return embedding as unknown as string;
 }
-
-/** Service-role-klient — används enbart server-side (API routes, ingestion) */
-export const supabase = createClient(url, key);
 
 // Typade tabellrader
 export interface DocumentRow {

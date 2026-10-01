@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase, toVector } from "./supabase";
 import { embedBatch } from "./embeddings";
 import { getDomainName } from "@/config/sources";
 import FirecrawlApp from "@mendable/firecrawl-js";
@@ -112,7 +112,7 @@ export async function ingestUrl(url: string): Promise<IngestResult> {
   const rows = chunks.map((content, i) => ({
     document_id: doc.id,
     content,
-    embedding: embeddings[i],
+    embedding: toVector(embeddings[i]),
     chunk_index: i,
     token_count: Math.round(content.length / 4),
   }));

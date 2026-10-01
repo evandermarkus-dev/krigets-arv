@@ -82,7 +82,7 @@ export default function InvestigatePage() {
       didAutoSubmit.current = true;
       sendMessage({ text: q });
     }
-  }, [searchParams]);
+  }, [searchParams, sendMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

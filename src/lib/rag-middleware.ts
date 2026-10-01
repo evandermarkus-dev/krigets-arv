@@ -1,7 +1,7 @@
 import type { LanguageModelMiddleware } from "ai";
 import { searchSources, formatResultsAsContext } from "./firecrawl";
 import { embedText } from "./embeddings";
-import { supabase, type SearchResult } from "./supabase";
+import { supabase, type SearchResult, toVector } from "./supabase";
 import { withBreaker } from "./circuit-breaker";
 
 const RAG_DEADLINE_MS = 1200
@@ -78,7 +78,7 @@ async function vectorSearch(query: string, limit = 4): Promise<SearchResult[]> {
   const embedding = await embedText(query);
 
   const { data, error } = await supabase.rpc("search_chunks", {
-    query_embedding: embedding,
+    query_embedding: toVector(embedding),
     match_threshold: 0.5,
     match_count: limit,
   });

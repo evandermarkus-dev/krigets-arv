@@ -227,8 +227,3 @@ But the 23 children who come here every morning – they don't just need math. T
 Answer as Olena – personal, concrete, grounded in facts. Refer to UNICEF's Ukraine reports, the UN's educide documentation, Learning Passport. Max 150 words per answer. Always answer in English.`,
   },
 };
-
-/** Returns the system prompt for a given role and locale. Falls back to Swedish. */
-export function getRoleSystemPrompt(roleId: string, locale: string): string {
-  return ROLE_PROMPTS[locale]?.[roleId] ?? ROLE_PROMPTS.sv[roleId];
-}
