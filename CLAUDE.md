@@ -133,7 +133,8 @@ CRON_SECRET=                  # admin/cron-auth + adminpanelens lösenord
 
 ## Kända lösa trådar
 
-- "366 källdokument" är hårdkodat i `BASE_PROMPT` och `messages/*.json` — verifiera mot faktiskt antal i `documents`
+- Kunskapsdatabasen är i praktiken tom: `documents` innehåller bara 7 startsidor (seed, april 2026), inga är klassificerade, och `firecrawl_jobs` har 0 rader — cron-crawlarna har aldrig skrivit något. RAG faller därför nästan alltid tillbaka på Firecrawl-sökning.
+- Ange aldrig ett hårdkodat antal källdokument i UI eller prompt — räkna dynamiskt eller utelämna
 - Två Supabase-klienter (`lib/supabase.ts` och `lib/krigets/supabase.ts`) — konsolidera
 - `getRoleSystemPrompt` i `prompts.ts` används inte längre
 - Lint-varning i `perspectives/page.tsx`: `useEffect` saknar `sendMessage` i dependency-listan

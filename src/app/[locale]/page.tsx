@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { getFacts } from "@/data/facts";
 
 export default async function HomePage({
   params,
@@ -76,7 +77,7 @@ export default async function HomePage({
         {/* Stats */}
         <div className="flex flex-wrap gap-10 mb-12 border-t border-zinc-800/60 pt-8">
           {[
-            { num: "366", label: t("stat1_label"), sub: t("stat1_sub") },
+            { num: String(getFacts(locale).length), label: t("stat1_label"), sub: t("stat1_sub") },
             { num: "22 495", label: t("stat2_label"), sub: t("stat2_sub") },
             { num: "+30%", label: t("stat3_label"), sub: t("stat3_sub") },
           ].map((s) => (

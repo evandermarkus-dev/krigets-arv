@@ -13,7 +13,7 @@
 | **Explore** | Mapbox-karta över aktiva konfliktzoner (Jemen, Gaza, Ukraina, Sudan, Sydsudan, Syrien, Myanmar, DR Kongo, Etiopien, Somalia, Sahel, Libanon m.fl.). Statistiken hämtas live från databasen och nya konflikter kan läggas till via admin utan koddeploy. |
 | **Investigate** | AI-utredare (Claude Sonnet 4.6) med RAG mot en vektordatabas av indexerade källdokument. Svar strömmas med källhänvisningar, i kompakt (snabba fakta) eller utförligt läge (strukturerad analys). |
 | **Perspectives** | Rollspel med sex karaktärer — ett barn i Gaza, en FN-diplomat, en vapenlobbyist, en MSF-läkare, en före detta barnsoldat och en lärare i Ukraina. Karaktärerna kan själva slå upp verifierade fakta i källdatabasen via tool calling. |
-| **Factbank** | Drygt hundra verifierade statistikuppgifter med källattribution, filtrerbara per kategori. |
+| **Factbank** | Verifierade statistikuppgifter (56 per språk) med källattribution, filtrerbara per kategori. |
 
 ## Källor
 
