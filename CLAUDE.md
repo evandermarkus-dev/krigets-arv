@@ -2,9 +2,21 @@
 
 ## Vad är det här projektet?
 
-**Krigets Arv** (The Legacy of War) är en investigativ webbapplikation som dokumenterar väpnade konflikters konsekvenser för barn globalt. Den kombinerar datavisualisering, AI-forskning och rollspelsperspektiv för att synliggöra sambanden mellan geopolitik, vapenhandel och barns lidande.
+**Krigets Arv** (The Legacy of War) är en investigativ webbapplikation som dokumenterar väpnade konflikters konsekvenser för barn globalt. Den kombinerar en konfliktkarta, en RAG-baserad AI-utredare, rollspelsperspektiv och en faktabank.
 
 **Primär målgrupp:** Journalister, lärare, NGO-forskare, engagerade medborgare.
+**Live:** https://krigets-arv.vercel.app · **Hosting:** Vercel (inkl. Cron)
+
+## Kommandon
+
+```bash
+npm run dev       # http://localhost:3000
+npm run build
+npm run lint
+npx tsc --noEmit  # typkontroll
+```
+
+OBS: `package-lock.json` är osynkad med `package.json` (saknar `@swc/helpers`), så `npm ci` misslyckas. Använd `npm install` tills låsfilen är uppdaterad och committad.
 
 ---
 
@@ -13,113 +25,115 @@
 ```
 src/
 ├── app/
-│   ├── api/
-│   │   ├── investigate/route.ts   # AI-utredarens API (Claude Sonnet)
-│   │   └── perspectives/route.ts  # Rollspelsperspektivens API (Claude Sonnet)
-│   ├── [locale]/                  # Locale-specifika sidor (sv/en)
-│   │   ├── page.tsx               # Hemsida med hero + navigation
-│   │   ├── explore/page.tsx       # Interaktiv Mapbox-karta (6 konfliktzoner)
-│   │   ├── investigate/page.tsx   # AI-chatbot för forskning
-│   │   ├── perspectives/page.tsx  # Rollspel: 6 karaktärer
-│   │   └── factbank/page.tsx      # Faktabank med 15 verifierade fakta
-│   ├── layout.tsx                 # Root layout (passthrough)
-│   └── page.tsx                   # Root redirect → /sv
-├── components/ui/                 # shadcn/ui-komponenter
-├── i18n/                          # next-intl konfiguration
-├── lib/utils.ts                   # cn()-utility
-└── messages/
-    ├── sv.json                    # Svenska översättningar
-    └── en.json                    # Engelska översättningar
+│   ├── [locale]/                     # sv/en
+│   │   ├── page.tsx                  # Hem
+│   │   ├── explore/page.tsx          # Mapbox-karta, data från /api/conflicts
+│   │   ├── investigate/page.tsx      # AI-utredare (useChat, streaming)
+│   │   ├── perspectives/page.tsx     # Rollspel, 6 karaktärer (useChat)
+│   │   └── factbank/page.tsx         # Faktabank (src/data/facts.ts)
+│   ├── admin/page.tsx                # Adminpanel — lösenord = CRON_SECRET
+│   └── api/
+│       ├── investigate/              # RAG + Claude, streaming
+│       ├── perspectives/             # Rollspel + lookupFact-tool, streaming
+│       ├── conflicts/                # Basdata + live-statistik + dynamiska konflikter
+│       ├── health/                   # DB / Redis / RAG-status
+│       ├── firecrawl/[conflictId]/   # Cron-crawl per konflikt
+│       └── admin/
+│           ├── ingest/               # Indexera URL eller seeda primärkällor
+│           ├── refresh-conflicts/    # Uppdatera conflict_stats via pgvector + Claude
+│           └── discover-conflicts/   # Claude föreslår nya konflikter → conflict_meta
+├── config/
+│   ├── prompts.ts                    # BASE_PROMPT, investigate-tillägg, ROLE_PROMPTS, MONOLOGUE_TRIGGERS
+│   └── sources.ts                    # TRUSTED_SOURCES (domän, typ, prioritet 1–3)
+├── data/
+│   ├── conflicts.ts                  # Baskonflikter sv/en (mergas med DB i /api/conflicts)
+│   └── facts.ts                      # Faktabank sv/en
+├── lib/
+│   ├── rag-middleware.ts             # AI SDK-middleware: pgvector → fallback Firecrawl
+│   ├── embeddings.ts                 # OpenAI text-embedding-3-small
+│   ├── ingestion.ts                  # Firecrawl scrape → chunk (800/120) → embed → DB
+│   ├── conflict-updater.ts           # Genererar konfliktstatistik ur källor
+│   ├── firecrawl.ts                  # Domänbegränsad sökning (prio-1 först)
+│   ├── circuit-breaker.ts            # withBreaker(name, fn, fallback)
+│   ├── response-cache.ts             # Upstash-cache för AI-svar
+│   ├── ratelimit.ts                  # Upstash, IP + UA-hash
+│   ├── logger.ts                     # Strukturerad JSON-loggning
+│   ├── supabase.ts                   # Otypad service-role-klient (äldre kod)
+│   └── krigets/                      # Typat bibliotek: crawl-jobb, dokument, konflikter
+│       └── database.types.ts         # Genererade Supabase-typer
+└── i18n/                             # next-intl
+messages/{sv,en}.json                 # next-intl-översättningar (de som faktiskt laddas)
+supabase/migrations/                  # RLS-policies
+vercel.json                           # Cron-schema
 ```
 
 ---
 
-## De 4 huvudsidorna
+## AI och RAG
 
-| Sida | Rutt | Funktion |
-|---|---|---|
-| Explore | `/[locale]/explore` | Mapbox-karta med 6 konfliktzoner, klickbara markörer med statistik |
-| Investigate | `/[locale]/investigate` | Claude AI-chatbot, 2 lägen (kompakt/utförligt), konversationshistorik |
-| Perspectives | `/[locale]/perspectives` | Rollspel med 6 karaktärer: Nour (barn i Gaza), FN-diplomat, vapenlobbyist, fältläkare (MSF), Adama (f.d. barnsoldат), lärare i Ukraina |
-| Factbank | `/[locale]/factbank` | 15 expanderbara faktakort med källattribution, filtrerbart |
+- **Modell:** `claude-sonnet-4-6` via Vercel AI SDK 6 (`@ai-sdk/anthropic`) i alla routes
+- **Embeddings:** OpenAI `text-embedding-3-small`, sökning via RPC `search_chunks` (pgvector)
+- **Investigate:** modellen wrappas med `ragMiddleware` som injicerar källor i varje anrop. pgvector först (deadline 1,2 s), Firecrawl-sökning som fallback. Live-statistik från `conflict_stats` läggs till i systemprompten. Kompakt läge 300 tokens, utförligt 1024.
+- **Perspectives:** karaktären har ett `lookupFact`-tool (pgvector → Firecrawl), max 2 steg, 512 tokens. `START_MONOLOGUE` ersätts med lokaliserad trigger från `MONOLOGUE_TRIGGERS`.
+- Både pgvector och Firecrawl körs via `withBreaker` — 3 fel öppnar kretsen i 30 s.
 
----
+## Databas (Supabase)
 
-## De 2 API-routes
+| Tabell | Innehåll |
+|---|---|
+| `documents` | Indexerade källdokument (`doc_type` satt = klassificerat) |
+| `document_chunks` | Chunks med embeddings |
+| `conflict_meta` | Dynamiska konflikter tillagda via admin (`active`) |
+| `conflict_stats` | Live-statistik per konflikt och locale |
+| `conflict_documents` | Koppling dokument ↔ konflikt |
+| `conflict_events` | Händelser per konflikt |
+| `firecrawl_jobs` | Jobbspårning för crawls |
 
-### `POST /api/investigate`
-- **Input:** `{ question: string, history: MessageParam[], mode: "compact" | "detailed" }`
-- **Output:** `{ answer: string }`
-- Använder `BASE_PROMPT` med 366 verifierade fakta inbäddade i systemprompt
-- Kompakt läge: max 300 tokens, 3-4 meningar
-- Utförligt läge: max 1024 tokens, strukturerad analys
+All skrivning sker server-side med service role. RLS tillåter enbart publik läsning (se migrationen).
 
-### `POST /api/perspectives`
-- **Input:** `{ message: string, systemPrompt: string, history: MessageParam[] }`
-- **Output:** `{ answer: string }`
-- `systemPrompt` skickas från klienten (rollspecifik prompt definierad i perspectives/page.tsx)
-- `message === "START_MONOLOGUE"` triggar karaktärens öppningsmonolog
+## Säkerhet
 
----
-
-## AI-modell och käll-arkitektur
-
-- **Modell:** `claude-sonnet-4-20250514` via direkt `@anthropic-ai/sdk`
-- **Kunskapsbas:** Hårdkodad `BASE_PROMPT` i `api/investigate/route.ts` med statistik från UNICEF, SIPRI, ICRC, Save the Children, FN, HRW
-- **OBS:** `@mendable/firecrawl-js` är installerad men ej aktiv — planerad för framtida RAG-implementation
-
----
+- **Systemprompter litas aldrig på från klienten.** Perspectives skickar `roleId`; servern slår upp prompten i `ROLE_PROMPTS` och avvisar okända roller (400).
+- Admin- och cron-routes kräver `Authorization: Bearer <CRON_SECRET>`. Vercel Cron skickar headern automatiskt.
+- Rate limits: investigate 30/min, perspectives 40/min per IP+UA. Limiter och cache failar öppet om Redis är nere.
+- `NEXT_PUBLIC_MAPBOX_TOKEN` är publik — begränsa den till domänen i Mapbox.
 
 ## Internationalisering
 
-- **Framework:** `next-intl` v4
-- **Locale:** `sv` (primär) och `en`
-- **Routing:** URL-baserat (`/sv/...`, `/en/...`)
-- **Config:** `src/i18n/routing.ts`, `middleware.ts`
-- **OBS:** Feature-sidor (explore, investigate, perspectives, factbank) har fortfarande hårdkodad svensk text — migrering till `t("key")`-mönster är planerat
-
----
+- `next-intl` v4, locales `sv` (default) och `en`, URL-baserat (`/sv/...`, `/en/...`)
+- `middleware.ts` exkluderar `api`, `admin` och statiska filer
+- Feature-sidorna har egna `UI = { sv, en }`-objekt i stället för `t("key")`
+- `src/i18n/request.ts` laddar `messages/` i roten. `src/messages/` är en dubblett som inte används.
 
 ## Miljövariabler
 
 ```env
-ANTHROPIC_API_KEY=          # Claude API-nyckel (krävs)
-NEXT_PUBLIC_MAPBOX_TOKEN=   # Mapbox publikt token (krävs, begränsa till domän i Mapbox-dashboard)
-FIRECRAWL_API_KEY=          # Firecrawl (installerad, ej aktiv ännu)
+ANTHROPIC_API_KEY=            # krävs
+NEXT_PUBLIC_MAPBOX_TOKEN=     # krävs (karta)
+SUPABASE_URL=                 # krävs — supabase-klienterna kastar fel vid modul-load om de saknas
+SUPABASE_SERVICE_ROLE_KEY=    # krävs, endast server
+OPENAI_API_KEY=               # embeddings; saknas → RAG hoppas över
+FIRECRAWL_API_KEY=            # ingestion + live-sökning; saknas → returnerar []
+UPSTASH_REDIS_REST_URL=       # rate limit + cache; saknas → avstängt
+UPSTASH_REDIS_REST_TOKEN=
+CRON_SECRET=                  # admin/cron-auth + adminpanelens lösenord
 ```
 
----
-
-## Tech stack
-
-| Teknologi | Version | Användning |
-|---|---|---|
-| Next.js | 15.5 | App Router, API routes |
-| React | 19 | UI-komponenter |
-| TypeScript | 5 | Typ-säkerhet |
-| Tailwind CSS | 3.4 | Styling |
-| shadcn/ui | — | UI-komponentbibliotek |
-| Mapbox GL | 3.11 | Interaktiva kartor |
-| react-map-gl | 8.0 | React-wrapper för Mapbox |
-| next-intl | 4.8 | Internationalisering |
-| react-markdown | 10 | Renderar AI-svar |
-| @anthropic-ai/sdk | 0.78 | Direkt Claude-integration |
+`src/instrumentation.ts` läser `.env.local` vid start och skriver över systemvariabler — endast relevant lokalt.
 
 ---
 
 ## Kodkonventioner
 
-- Allt nytt innehåll (fakta, konflikter) ska citeras med specificerad källa
-- Håll `FACTS`-array och `CONFLICTS`-array separerade från rendering-kod (extrahera till `src/data/`)
-- Systempromptar hör hemma i `src/config/prompts.ts`, inte i route-handlers
-- Alla statistikuppgifter måste ha källhänvisning: `[Källa: Organisation, år]`
+- Allt nytt innehåll (fakta, konflikter) ska ha specificerad källa: `[Källa: Organisation, år]`
+- Data hör hemma i `src/data/`, systemprompter i `src/config/prompts.ts`, inte i routes eller klientkomponenter
+- Nya källdomäner läggs till i `src/config/sources.ts` med typ och prioritet
+- Externa beroenden (DB, Firecrawl, Redis) ska wrappas så att fel degraderar funktionen i stället för att ge 500
+- Ny DB-kod skrivs mot det typade `src/lib/krigets/`-biblioteket
 
----
+## Kända lösa trådar
 
-## Planerade förbättringar (se plans/serene-tickling-rose.md)
-
-- Migrera till Vercel AI SDK v6 med streaming
-- Rate limiting på AI-routes (Upstash)
-- Sökbara källdokument via Firecrawl
-- Faktabanken expanderad till 50+ fakta
-- Fler rollspelsperspektiv
+- "366 källdokument" är hårdkodat i `BASE_PROMPT` och `messages/*.json` — verifiera mot faktiskt antal i `documents`
+- Två Supabase-klienter (`lib/supabase.ts` och `lib/krigets/supabase.ts`) — konsolidera
+- `getRoleSystemPrompt` i `prompts.ts` används inte längre
+- Lint-varning i `perspectives/page.tsx`: `useEffect` saknar `sendMessage` i dependency-listan

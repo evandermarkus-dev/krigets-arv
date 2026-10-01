@@ -96,7 +96,7 @@ npm run dev   # http://localhost:3000
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limiting och cache (valfritt lokalt) |
 | `CRON_SECRET` | Skyddar admin- och cron-routes |
 
-Appen startar utan Supabase, OpenAI och Redis, men då utan RAG, live-statistik, cache och rate limiting.
+Supabase krävs för API-routerna (klienten kastar fel vid uppstart om variablerna saknas). OpenAI, Firecrawl och Redis är valfria — utan dem hoppas RAG, live-sökning, cache och rate limiting över.
 
 ## Licens
 
