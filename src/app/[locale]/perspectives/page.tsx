@@ -7,7 +7,6 @@ import { useChat } from "@ai-sdk/react";
 import { isToolUIPart } from "ai";
 import { DefaultChatTransport } from "ai";
 import { MessageResponse } from "@/components/ai-elements/message";
-import { getRoleSystemPrompt } from "@/config/prompts";
 
 const UI = {
   sv: {
@@ -108,10 +107,7 @@ function getRoles(locale: string) {
     },
   ];
 
-  return roles.map((role) => ({
-    ...role,
-    systemPrompt: getRoleSystemPrompt(role.id, locale),
-  }));
+  return roles;
 }
 
 type Role = ReturnType<typeof getRoles>[0];
@@ -124,7 +120,7 @@ function PerspectiveChat({ role, ui, locale }: { role: Role; ui: typeof UI.sv; l
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/perspectives",
-      body: { systemPrompt: role.systemPrompt, locale },
+      body: { roleId: role.id, locale },
     }),
   });
 

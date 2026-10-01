@@ -4,7 +4,7 @@ const anthropic = createAnthropic({ baseURL: "https://api.anthropic.com/v1" });
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { perspectivesRatelimit, checkRatelimit } from "@/lib/ratelimit";
-import { MONOLOGUE_TRIGGERS } from "@/config/prompts";
+import { MONOLOGUE_TRIGGERS, ROLE_PROMPTS } from "@/config/prompts";
 import { buildCacheKey, getCachedResponse, setCachedResponse, cachedTextStreamResponse } from "@/lib/response-cache";
 import { log } from "@/lib/logger";
 import { embedText } from "@/lib/embeddings";
@@ -50,6 +50,15 @@ const lookupFactTool = tool<z.infer<typeof lookupFactSchema>, string>({
 
 export const maxDuration = 60;
 
+const MAX_MESSAGES = 40;
+
+/** Resolve the character prompt on the server — never trust a prompt from the client. */
+function resolveRolePrompt(roleId: unknown, locale: string): string | null {
+  if (typeof roleId !== "string") return null;
+  const prompts = ROLE_PROMPTS[locale] ?? ROLE_PROMPTS.sv;
+  return Object.hasOwn(prompts, roleId) ? prompts[roleId] : null;
+}
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
   const ua = req.headers.get("user-agent") ?? "";
@@ -58,7 +67,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { messages, systemPrompt, locale } = await req.json();
+    const body = await req.json();
+    const messages = body?.messages;
+    const locale: string = body?.locale === "en" ? "en" : "sv";
+
+    const systemPrompt = resolveRolePrompt(body?.roleId, locale);
+    if (!systemPrompt) {
+      return NextResponse.json({ error: "Unknown role." }, { status: 400 });
+    }
+    if (!Array.isArray(body?.messages) || body.messages.length === 0 || body.messages.length > MAX_MESSAGES) {
+      return NextResponse.json({ error: "Invalid messages." }, { status: 400 });
+    }
 
     // Cache key based on last message content + locale
     const lastMsg = messages?.at(-1);
@@ -72,7 +91,7 @@ export async function POST(req: NextRequest) {
     // Inkludera systemPrompt i nyckeln — annars delar alla karaktärer samma
     // cache-plats för öppningsmeddelandet (identiskt "START_MONOLOGUE" innan
     // det ersätts med den lokaliserade triggerfrasen).
-    const cacheKey = buildCacheKey(`${systemPrompt}::${lastText}`, "perspectives", locale ?? "sv");
+    const cacheKey = buildCacheKey(`${systemPrompt}::${lastText}`, "perspectives", locale);
     const cached = await getCachedResponse(cacheKey);
 
     if (cached) {
@@ -80,7 +99,7 @@ export async function POST(req: NextRequest) {
       return cachedTextStreamResponse(cached);
     }
 
-    const monologueTrigger = MONOLOGUE_TRIGGERS[locale] ?? MONOLOGUE_TRIGGERS.sv;
+    const monologueTrigger = MONOLOGUE_TRIGGERS[locale];
 
     // Replace START_MONOLOGUE trigger with actual prompt in last message
     const processedMessages = messages.map((m: { role: string; content: unknown }, i: number) =>
