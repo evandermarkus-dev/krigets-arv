@@ -19,8 +19,8 @@ import { TRUSTED_SOURCES } from "@/config/sources";
 export async function POST(req: NextRequest) {
   // Autentisering
   const auth = req.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret || auth?.trim() !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

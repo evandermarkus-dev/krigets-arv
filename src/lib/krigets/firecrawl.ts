@@ -14,7 +14,10 @@
 
 import Firecrawl from "@mendable/firecrawl-js"
 import { getServiceClient } from "./supabase"
-import { upsertDocument } from "./documents"
+import { upsertDocument, replaceDocumentChunks } from "./documents"
+import { chunkText } from "../chunking"
+import { embedBatch } from "../embeddings"
+import { toVector } from "../supabase"
 import { linkDocumentToConflict } from "./conflicts"
 import type { CrawlMode, JobStatus } from "./database.types"
 
@@ -52,6 +55,7 @@ export interface CrawlJobResult {
   pagesScraped: number
   pagesFailed: number
   documentsInserted: number
+  chunksStored: number
   errorMessage?: string
 }
 
@@ -70,6 +74,7 @@ export async function runCrawlJob(input: CrawlJobInput): Promise<CrawlJobResult>
       pagesScraped: 0,
       pagesFailed: 0,
       documentsInserted: 0,
+      chunksStored: 0,
       errorMessage: message,
     }
   }
@@ -103,6 +108,7 @@ interface ExecutionResult {
   pagesScraped: number
   pagesFailed: number
   documentsInserted: number
+  chunksStored: number
 }
 
 interface ScrapedPage {
@@ -149,11 +155,12 @@ async function executeJob(input: CrawlJobInput): Promise<ExecutionResult> {
   } else {
     // map: URL-discovery, inget sidinnehåll
     const result = await fc.map(input.urlPattern)
-    return { pagesScraped: result.links?.length ?? 0, pagesFailed: 0, documentsInserted: 0 }
+    return { pagesScraped: result.links?.length ?? 0, pagesFailed: 0, documentsInserted: 0, chunksStored: 0 }
   }
 
   // Skriv pages till documents
   let inserted = 0
+  let chunksStored = 0
   for (const page of pages) {
     if (!page.url || !page.markdown) {
       pagesFailed += 1
@@ -176,6 +183,7 @@ async function executeJob(input: CrawlJobInput): Promise<ExecutionResult> {
           taggedBy: "crawl_target",
         })
       }
+      chunksStored += await storeChunks(doc.id, page.markdown)
       inserted += 1
     } catch (err) {
       console.warn(`[firecrawl] Kunde inte skriva ${page.url}:`, err)
@@ -183,7 +191,37 @@ async function executeJob(input: CrawlJobInput): Promise<ExecutionResult> {
     }
   }
 
-  return { pagesScraped: pages.length, pagesFailed, documentsInserted: inserted }
+  return { pagesScraped: pages.length, pagesFailed, documentsInserted: inserted, chunksStored }
+}
+
+/**
+ * Delar sidans markdown i chunks, embeddar och ersätter dokumentets chunks.
+ * Degraderar tyst: saknad OPENAI_API_KEY eller embedding-fel lämnar dokumentet
+ * kvar utan chunks (sidan räknas ändå som insatt) i stället för att fälla jobbet.
+ */
+async function storeChunks(documentId: string, markdown: string): Promise<number> {
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn("[firecrawl] OPENAI_API_KEY saknas — hoppar över chunks")
+    return 0
+  }
+  const chunks = chunkText(markdown)
+  if (chunks.length === 0) return 0
+  try {
+    const embeddings = await embedBatch(chunks)
+    await replaceDocumentChunks(
+      documentId,
+      chunks.map((content, i) => ({
+        content,
+        chunkIndex: i,
+        embedding: toVector(embeddings[i]),
+        tokenCount: Math.round(content.length / 4),
+      })),
+    )
+    return chunks.length
+  } catch (err) {
+    console.warn(`[firecrawl] Kunde inte skapa chunks för dokument ${documentId}:`, err)
+    return 0
+  }
 }
 
 async function markJobSuccess(jobId: string, result: ExecutionResult) {
