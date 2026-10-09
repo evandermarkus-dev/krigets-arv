@@ -4,15 +4,16 @@ import { runConflictBatch, type BatchInput } from "@/lib/krigets/firecrawl"
 // Crawl-jobb kan ta upp till 5 minuter — sätt maxDuration till Vercels default-tak
 export const maxDuration = 300
 
-// ISO2-koder och OHCHR-sluggar per konflikt-ID
+// ReliefWeb använder ISO3-koder (/country/hti); OHCHR använder landsluggar.
+// ISO2 ger 404 hos ReliefWeb.
 // Utöka listan när fler konflikter ska täckas
 const CONFLICT_SOURCES: Record<string, BatchInput["sources"]> = {
   "tigray-ethiopia": [
     {
       domain: "reliefweb.int",
-      urlPattern: "https://reliefweb.int/country/et",
+      urlPattern: "https://reliefweb.int/country/eth",
       crawlMode: "crawl",
-      includePaths: ["/country/et"],
+      includePaths: ["/country/eth"],
     },
     {
       domain: "ohchr.org",
@@ -24,9 +25,9 @@ const CONFLICT_SOURCES: Record<string, BatchInput["sources"]> = {
   "haiti-gang-violence": [
     {
       domain: "reliefweb.int",
-      urlPattern: "https://reliefweb.int/country/ht",
+      urlPattern: "https://reliefweb.int/country/hti",
       crawlMode: "crawl",
-      includePaths: ["/country/ht"],
+      includePaths: ["/country/hti"],
     },
     {
       domain: "ohchr.org",
@@ -38,9 +39,9 @@ const CONFLICT_SOURCES: Record<string, BatchInput["sources"]> = {
   "mozambique-cabo": [
     {
       domain: "reliefweb.int",
-      urlPattern: "https://reliefweb.int/country/mz",
+      urlPattern: "https://reliefweb.int/country/moz",
       crawlMode: "crawl",
-      includePaths: ["/country/mz"],
+      includePaths: ["/country/moz"],
     },
     {
       domain: "ohchr.org",
