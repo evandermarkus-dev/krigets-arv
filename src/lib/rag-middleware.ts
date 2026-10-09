@@ -3,8 +3,24 @@ import { searchSources, formatResultsAsContext } from "./firecrawl";
 import { embedText } from "./embeddings";
 import { supabase, type SearchResult, toVector } from "./supabase";
 import { withBreaker } from "./circuit-breaker";
+import { log } from "./logger";
 
 const RAG_DEADLINE_MS = 1200
+
+/**
+ * Mätvärden för en RAG-körning. Fylls på medan pipelinen kör, så att en
+ * timeout fortfarande kan logga hur långt den hann. Innehåller aldrig
+ * frågetext.
+ */
+interface RagDiag {
+  embed_ms?: number
+  vector_ms?: number
+  vector_hits?: number
+  top_similarity?: number
+  vector_error?: string
+  firecrawl_ms?: number
+  firecrawl_hits?: number
+}
 
 /**
  * Nyckelord som alltid läggs till sökkfrågan för att styra Firecrawl
@@ -72,19 +88,36 @@ function buildSearchQuery(messages: unknown[]): string {
  * Söker i Supabase pgvector efter relevanta chunks.
  * Returnerar [] om OPENAI_API_KEY saknas eller databasen är tom.
  */
-async function vectorSearch(query: string, limit = 4): Promise<SearchResult[]> {
-  if (!process.env.OPENAI_API_KEY) return [];
+async function vectorSearch(query: string, limit: number, diag: RagDiag): Promise<SearchResult[]> {
+  if (!process.env.OPENAI_API_KEY) {
+    diag.vector_error = "OPENAI_API_KEY saknas"
+    return [];
+  }
 
-  const embedding = await embedText(query);
+  const t0 = Date.now()
+  try {
+    const embedding = await embedText(query);
+    diag.embed_ms = Date.now() - t0
 
-  const { data, error } = await supabase.rpc("search_chunks", {
-    query_embedding: toVector(embedding),
-    match_threshold: 0.5,
-    match_count: limit,
-  });
+    const { data, error } = await supabase.rpc("search_chunks", {
+      query_embedding: toVector(embedding),
+      match_threshold: 0.5,
+      match_count: limit,
+    });
+    diag.vector_ms = Date.now() - t0
 
-  if (error || !data?.length) return [];
-  return data as SearchResult[];
+    if (error) {
+      diag.vector_error = error.message
+      return [];
+    }
+    diag.vector_hits = data?.length ?? 0
+    // Resultatet är sorterat på avstånd, så första raden har högst likhet
+    if (data?.length) diag.top_similarity = Math.round((data[0] as SearchResult).similarity * 1000) / 1000
+    return (data ?? []) as SearchResult[];
+  } catch (err) {
+    diag.vector_error = err instanceof Error ? err.message : String(err)
+    throw err // låt circuit breakern räkna felet
+  }
 }
 
 /**
@@ -111,11 +144,12 @@ export type RagSource = "pgvector" | "firecrawl" | "none"
  */
 async function runRagPipeline(
   query: string,
+  diag: RagDiag,
 ): Promise<{ context: string; source: RagSource }> {
   // Steg 1: pgvector med circuit breaker
   const vectorResults = await withBreaker(
     "pgvector",
-    () => vectorSearch(query, 4),
+    () => vectorSearch(query, 4, diag),
     [] as SearchResult[],
   )
 
@@ -124,11 +158,14 @@ async function runRagPipeline(
 
   // Steg 2: Firecrawl fallback om < 2 vektorträffar
   if (vectorResults.length < 2) {
+    const t0 = Date.now()
     const firecrawlResults = await withBreaker(
       "firecrawl",
       () => searchSources(query, 3),
       [],
     )
+    diag.firecrawl_ms = Date.now() - t0
+    diag.firecrawl_hits = firecrawlResults.length
     const firecrawlContext = formatResultsAsContext(firecrawlResults)
     context = context + firecrawlContext
     if (firecrawlResults.length > 0) source = "firecrawl"
@@ -156,7 +193,20 @@ export const ragMiddleware: LanguageModelMiddleware = {
 
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), RAG_DEADLINE_MS))
 
-    const ragResult = await Promise.race([runRagPipeline(query), timeout])
+    const diag: RagDiag = {}
+    const ragStart = Date.now()
+    const ragResult = await Promise.race([runRagPipeline(query, diag), timeout])
+
+    // En rad per fråga: vilken väg som vann och hur långt pipelinen hann.
+    // Frågetexten loggas aldrig, bara dess längd.
+    log("info", {
+      route: "rag",
+      outcome: ragResult === null ? "timeout" : ragResult.context ? ragResult.source : "empty",
+      deadline_ms: RAG_DEADLINE_MS,
+      total_ms: Date.now() - ragStart,
+      query_chars: query.length,
+      ...diag,
+    })
 
     // Timeout won — stream with base prompt only
     if (ragResult === null || !ragResult.context) return params
