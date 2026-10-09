@@ -53,14 +53,23 @@ const CONFLICT_SOURCES: Record<string, BatchInput["sources"]> = {
 
 const KNOWN_CONFLICTS = new Set(Object.keys(CONFLICT_SOURCES))
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ conflictId: string }> },
-) {
+type RouteContext = { params: Promise<{ conflictId: string }> }
+
+// Vercel cron anropar alltid med GET; POST behålls för manuella anrop (curl/admin).
+export async function GET(req: NextRequest, ctx: RouteContext) {
+  return handle(req, ctx)
+}
+
+export async function POST(req: NextRequest, ctx: RouteContext) {
+  return handle(req, ctx)
+}
+
+async function handle(req: NextRequest, { params }: RouteContext) {
   // Bearer-auth: Vercel cron skickar "Authorization: Bearer <CRON_SECRET>" automatiskt
   const authHeader = req.headers.get("authorization") ?? ""
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
-  if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) {
+  const secret = process.env.CRON_SECRET?.trim()
+  if (!secret || token.trim() !== secret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
