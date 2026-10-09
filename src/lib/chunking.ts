@@ -25,3 +25,28 @@ export function chunkText(text: string): string[] {
   if (current.trim().length > 50) chunks.push(current.trim());
   return chunks;
 }
+
+/**
+ * Rensar scrapad markdown från navigation och länkmarkup innan chunkning.
+ * Behåller länktexten men tar bort URL:er, bilder, "Skip to main content"
+ * och korta menyrader (list-poster under 30 tecken). Rubriker och brödtext
+ * lämnas orörda.
+ */
+export function cleanMarkdown(markdown: string): string {
+  const stripped = markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")      // bilder
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")   // [text](url) -> text
+    .replace(/Skip to main content/gi, "");
+
+  return stripped
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      if (t === "") return true;
+      return !(/^[-*]\s/.test(t) && t.length < 30); // menyrader
+    })
+    .join("\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

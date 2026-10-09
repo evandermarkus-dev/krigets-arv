@@ -15,7 +15,7 @@
 import Firecrawl from "@mendable/firecrawl-js"
 import { getServiceClient } from "./supabase"
 import { upsertDocument, replaceDocumentChunks } from "./documents"
-import { chunkText } from "../chunking"
+import { chunkText, cleanMarkdown } from "../chunking"
 import { embedBatch } from "../embeddings"
 import { toVector } from "../supabase"
 import { linkDocumentToConflict } from "./conflicts"
@@ -125,7 +125,7 @@ async function executeJob(input: CrawlJobInput): Promise<ExecutionResult> {
 
   if (input.crawlMode === "scrape") {
     // Firecrawl v2: scrape() kastar vid fel, returnerar Document direkt
-    const result = await fc.scrape(input.urlPattern, { formats: ["markdown"] })
+    const result = await fc.scrape(input.urlPattern, { formats: ["markdown"], onlyMainContent: true })
     pages = [
       {
         url: input.urlPattern,
@@ -141,7 +141,7 @@ async function executeJob(input: CrawlJobInput): Promise<ExecutionResult> {
       maxDiscoveryDepth: input.maxDepth ?? 2,
       includePaths: input.includePaths ?? null,
       excludePaths: input.excludePaths ?? null,
-      scrapeOptions: { formats: ["markdown"] },
+      scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
     })
     if (result.status === "failed") {
       throw new Error(`crawl misslyckades för ${input.urlPattern}`)
@@ -162,7 +162,9 @@ async function executeJob(input: CrawlJobInput): Promise<ExecutionResult> {
   let inserted = 0
   let chunksStored = 0
   for (const page of pages) {
-    if (!page.url || !page.markdown) {
+    // Hoppa över felsidor (404 m.fl.) — de ska inte hamna i sökindexet
+    const status = Number(page.metadata["statusCode"])
+    if (!page.url || !page.markdown || (Number.isFinite(status) && status >= 400)) {
       pagesFailed += 1
       continue
     }
@@ -204,7 +206,7 @@ async function storeChunks(documentId: string, markdown: string): Promise<number
     console.warn("[firecrawl] OPENAI_API_KEY saknas — hoppar över chunks")
     return 0
   }
-  const chunks = chunkText(markdown)
+  const chunks = chunkText(cleanMarkdown(markdown))
   if (chunks.length === 0) return 0
   try {
     const embeddings = await embedBatch(chunks)
