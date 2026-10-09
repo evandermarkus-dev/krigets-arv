@@ -95,6 +95,7 @@ async function handle(req: NextRequest, { params }: RouteContext) {
       failed: results.filter((r) => r.status === "failed").length,
       totalDocuments: results.reduce((sum, r) => sum + r.documentsInserted, 0),
       totalPages: results.reduce((sum, r) => sum + r.pagesScraped, 0),
+      totalChunks: results.reduce((sum, r) => sum + r.chunksStored, 0),
     }
 
     console.log(`[firecrawl-batch] Klart för ${conflictId}:`, summary)

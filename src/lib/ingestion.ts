@@ -2,37 +2,11 @@ import { supabase, toVector } from "./supabase";
 import { embedBatch } from "./embeddings";
 import { getDomainName } from "@/config/sources";
 import FirecrawlApp from "@mendable/firecrawl-js";
-
-const CHUNK_SIZE = 800;       // tecken per chunk (≈ 200 tokens)
-const CHUNK_OVERLAP = 120;    // tecken overlap mellan chunks
+import { chunkText } from "./chunking";
 
 function getFirecrawl(): FirecrawlApp | null {
   const key = process.env.FIRECRAWL_API_KEY;
   return key ? new FirecrawlApp({ apiKey: key }) : null;
-}
-
-/**
- * Delar upp en lång text i överlappande chunks.
- * Försöker dela på styckesbrytningar (\n\n) för att hålla meningar hela.
- */
-function chunkText(text: string): string[] {
-  const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 50);
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const para of paragraphs) {
-    if ((current + "\n\n" + para).length > CHUNK_SIZE && current.length > 0) {
-      chunks.push(current.trim());
-      // Overlap: börja nästa chunk med slutet av föregående
-      const words = current.split(" ");
-      current = words.slice(-Math.floor(CHUNK_OVERLAP / 5)).join(" ") + "\n\n" + para;
-    } else {
-      current = current ? current + "\n\n" + para : para;
-    }
-  }
-
-  if (current.trim().length > 50) chunks.push(current.trim());
-  return chunks;
 }
 
 export interface IngestResult {
